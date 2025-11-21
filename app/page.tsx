@@ -4,7 +4,7 @@ import { useState } from 'react';
 import FileUpload from './components/FileUpload';
 import DataVisualization from './components/DataVisualization';
 import DataTable from './components/DataTable';
-import MessageExplorer from './components/MessageExplorer'; // NEW
+import MessageExplorer from './components/MessageExplorer';
 import { UploadedFiles, ParsedData } from '@/types';
 import { parseFile, validateSMSData, validateCallData, validateContactData } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -97,103 +97,115 @@ export default function Home() {
   const hasData = parsedData.sms.length > 0 || parsedData.calls.length > 0;
 
   return (
-    <div className="min-h-screen space-y-8">
-      {/* Header */}
-      <div className="text-center space-y-2">
-        <div className="flex items-center justify-center gap-3">
-          <BarChart3 className="h-8 w-8 text-primary" />
-          <h1 className="text-4xl font-bold tracking-tight">Communication Analyzer</h1>
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto px-4 py-8 space-y-8">
+        {/* Header */}
+        <div className="text-center space-y-4">
+          <div className="flex items-center justify-center gap-3">
+            <BarChart3 className="h-8 w-8 text-primary" />
+            <h1 className="text-4xl font-bold tracking-tight">visualrecords</h1>
+          </div>
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+            Upload XLSX or CSVs files and get access to data that would make you question whether it's play-to-win or not.
+          </p>
         </div>
-        <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-          Upload multiple SMS, call logs, and contact files to visualize and analyze your communication patterns
-        </p>
-      </div>
 
-      {/* File Upload Section */}
-      <FileUpload onFilesUpload={handleFilesUpload} isLoading={isLoading} />
+        {/* File Upload Section */}
+        <FileUpload onFilesUpload={handleFilesUpload} isLoading={isLoading} />
 
-      {/* Loading State */}
-      {isLoading && (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Processing files...</span>
-                <span className="text-sm text-muted-foreground">Please wait</span>
+        {/* Loading State */}
+        {isLoading && (
+          <Card className="mx-auto max-w-2xl">
+            <CardContent className="pt-6">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Processing files...</span>
+                  <span className="text-sm text-muted-foreground">Please wait</span>
+                </div>
+                <Progress value={100} className="w-full" />
               </div>
-              <Progress value={100} className="w-full" />
-            </div>
-          </CardContent>
-        </Card>
-      )}
+            </CardContent>
+          </Card>
+        )}
 
-      {/* Error State */}
-      {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            {error}
-            <br />
-            <span className="text-sm mt-2 block">
-              Check the browser console for detailed debugging information.
-            </span>
-          </AlertDescription>
-        </Alert>
-      )}
+        {/* Error State */}
+        {error && (
+          <Alert variant="destructive" className="mx-auto max-w-2xl">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="ml-2">
+              {error}
+              <br />
+              <span className="text-sm mt-2 block">
+                Check the browser console for detailed debugging information.
+              </span>
+            </AlertDescription>
+          </Alert>
+        )}
 
-      {/* Data Display */}
-      {!isLoading && hasData && (
-        <Tabs defaultValue="visualization" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 max-w-2xl mx-auto">
-            <TabsTrigger value="visualization" className="flex items-center gap-2">
-              <BarChart className="h-4 w-4" />
-              Charts
-            </TabsTrigger>
-            <TabsTrigger value="table" className="flex items-center gap-2">
-              <Table className="h-4 w-4" />
-              Data Table
-            </TabsTrigger>
-            <TabsTrigger value="explorer" className="flex items-center gap-2">
-              <MessageSquare className="h-4 w-4" />
-              Message Explorer
-            </TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="visualization">
-            <DataVisualization data={parsedData} />
-          </TabsContent>
-          
-          <TabsContent value="table">
-            <DataTable data={parsedData} />
-          </TabsContent>
+        {/* Data Display */}
+        {!isLoading && hasData && (
+          <div className="space-y-6">
+            <Tabs defaultValue="visualization" className="w-full">
+            <TabsList className="grid w-full grid-cols-3 max-w-2xl mx-auto p-0 bg-muted rounded-lg">
+              <TabsTrigger 
+                value="visualization" 
+                className="flex items-center gap-2 py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              >
+                <BarChart className="h-4 w-4" />
+                Charts
+              </TabsTrigger>
+              <TabsTrigger 
+                value="table" 
+                className="flex items-center gap-2 py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              >
+                <Table className="h-4 w-4" />
+                Data Table
+              </TabsTrigger>
+              <TabsTrigger 
+                value="explorer" 
+                className="flex items-center gap-2 py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              >
+                <MessageSquare className="h-4 w-4" />
+                Message Explorer
+              </TabsTrigger>
+            </TabsList>
+              
+              <TabsContent value="visualization" className="mt-6">
+                <DataVisualization data={parsedData} />
+              </TabsContent>
+              
+              <TabsContent value="table" className="mt-6">
+                <DataTable data={parsedData} />
+              </TabsContent>
 
-          {/* NEW: Message Explorer Tab */}
-          <TabsContent value="explorer">
-            <MessageExplorer data={parsedData} />
-          </TabsContent>
-        </Tabs>
-      )}
+              <TabsContent value="explorer" className="mt-6">
+                <MessageExplorer data={parsedData} />
+              </TabsContent>
+            </Tabs>
+          </div>
+        )}
 
-      {/* Empty State */}
-      {!isLoading && !hasData && !error && (
-        <Card className="text-center">
-          <CardHeader>
-            <CardTitle>Ready to Analyze</CardTitle>
-            <CardDescription>
-              Upload your communication data to get started with visualization and insights
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="max-w-md mx-auto space-y-4">
-              <div className="text-6xl mb-4">📊</div>
-              <p className="text-muted-foreground">
-                Upload multiple SMS and/or call logs files to combine and visualize your communication patterns, 
-                analyze trends, and gain insights from your data.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+        {/* Empty State */}
+        {!isLoading && !hasData && !error && (
+          <Card className="text-center mx-auto max-w-2xl">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-2xl">Ready to Analyze</CardTitle>
+              <CardDescription className="text-base">
+                Upload your communication data to get started with visualization and insights
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <div className="max-w-md mx-auto space-y-4">
+                <div className="text-6xl mb-6">📊</div>
+                <p className="text-muted-foreground text-lg leading-relaxed">
+                  Upload multiple SMS and/or call logs files to combine and visualize your communication patterns, 
+                  analyze trends, and gain insights from your data.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   );
 }

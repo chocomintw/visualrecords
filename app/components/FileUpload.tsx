@@ -81,119 +81,119 @@ export default function FileUpload({ onFilesUpload, isLoading = false }: FileUpl
   };
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Upload className="h-6 w-6" />
-          Upload Your Data Files
-        </CardTitle>
-        <CardDescription>
-          Upload multiple SMS, call logs, and contact list files for combined analysis
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {fileTypes.map((type) => {
-            const files = uploadedFiles[type] || [];
-            const fileCount = files.length;
+  <Card className="w-full">
+    <CardHeader className="pb-4">
+      <CardTitle className="flex items-center gap-2 text-2xl">
+        <Upload className="h-6 w-6" />
+        Upload Your Data Files
+      </CardTitle>
+      <CardDescription className="text-base">
+        Upload multiple SMS, call logs, and contact list files for combined analysis
+      </CardDescription>
+    </CardHeader>
+    <CardContent className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {fileTypes.map((type) => {
+          const files = uploadedFiles[type] || [];
+          const fileCount = files.length;
 
-            return (
-              <div key={type} className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor={type} className="text-sm font-medium">
-                    {getFileTypeLabel(type)}
-                  </Label>
+          return (
+            <div key={type} className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label htmlFor={type} className="text-sm font-medium">
+                  {getFileTypeLabel(type)}
+                </Label>
+                {fileCount > 0 && (
+                  <Badge variant="secondary" className="flex items-center gap-1">
+                    {getFileIcon(type)}
+                    {fileCount} file{fileCount !== 1 ? 's' : ''}
+                  </Badge>
+                )}
+              </div>
+              
+              <div className="space-y-3">
+                <div className="flex items-center space-x-2">
+                  <Input
+                    id={type}
+                    type="file"
+                    accept=".csv,.xlsx"
+                    onChange={(e) => handleFileChange(type, e)}
+                    className="flex-1"
+                    disabled={isLoading}
+                    ref={setFileInputRef(type)}
+                    multiple
+                  />
                   {fileCount > 0 && (
-                    <Badge variant="secondary" className="flex items-center gap-1">
-                      {getFileIcon(type)}
-                      {fileCount} file{fileCount !== 1 ? 's' : ''}
-                    </Badge>
-                  )}
-                </div>
-                
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2">
-                    <Input
-                      id={type}
-                      type="file"
-                      accept=".csv,.xlsx"
-                      onChange={(e) => handleFileChange(type, e)}
-                      className="flex-1"
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => removeAllFiles(type)}
                       disabled={isLoading}
-                      ref={setFileInputRef(type)}
-                      multiple // Allow multiple file selection
-                    />
-                    {fileCount > 0 && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        onClick={() => removeAllFiles(type)}
-                        disabled={isLoading}
-                        title={`Remove all ${getFileTypeLabel(type)} files`}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                  
-                  {fileCount > 0 && (
-                    <div className="space-y-2 max-h-32 overflow-y-auto">
-                      {files.map((file, index) => (
-                        <div
-                          key={`${type}-${index}`}
-                          className="flex items-center justify-between p-2 border rounded text-sm"
-                        >
-                          <div className="flex items-center gap-2 min-w-0 flex-1">
-                            <FileText className="h-3 w-3 flex-shrink-0" />
-                            <span className="truncate" title={file.name}>
-                              {file.name}
-                            </span>
-                          </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => removeFile(type, index)}
-                            disabled={isLoading}
-                            className="h-6 w-6 flex-shrink-0"
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
+                      title={`Remove all ${getFileTypeLabel(type)} files`}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
                   )}
                 </div>
                 
-                {fileCount === 0 && (
-                  <div className="text-sm text-muted-foreground flex items-center gap-2">
-                    <Plus className="h-3 w-3" />
-                    Click to add files
+                {fileCount > 0 && (
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {files.map((file, index) => (
+                      <div
+                        key={`${type}-${index}`}
+                        className="flex items-center justify-between p-3 border rounded-lg text-sm bg-muted/50"
+                      >
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <FileText className="h-3 w-3 flex-shrink-0" />
+                          <span className="truncate" title={file.name}>
+                            {file.name}
+                          </span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeFile(type, index)}
+                          disabled={isLoading}
+                          className="h-6 w-6 flex-shrink-0 ml-2"
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
-            );
-          })}
-        </div>
+              
+              {fileCount === 0 && (
+                <div className="text-sm text-muted-foreground flex items-center gap-2 p-2">
+                  <Plus className="h-3 w-3" />
+                  Click to add files
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
 
-        <Alert>
-          <AlertDescription className="text-sm">
-            <strong>Note:</strong> You can upload multiple files for each data type. All files of the same type will be combined during analysis.
-            You must upload at least one SMS or Call Logs file. Contact list is optional but recommended for better visualization.
-          </AlertDescription>
-        </Alert>
+      <Alert>
+        <AlertDescription className="text-sm leading-relaxed">
+          <strong>Note:</strong> You can upload multiple files for each data type. All files of the same type will be combined during analysis.
+          You must upload at least one SMS or Call Logs file. Contact list is optional but recommended for better visualization.
+        </AlertDescription>
+      </Alert>
 
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <div className="flex items-center gap-4">
-            <span>Supported: CSV, XLSX</span>
-            <span>Multiple files supported</span>
-          </div>
-          <div className="text-right">
-            {getTotalFileCount()} file{getTotalFileCount() !== 1 ? 's' : ''} selected
-          </div>
+      <div className="flex items-center justify-between text-sm text-muted-foreground pt-2">
+        <div className="flex items-center gap-4">
+          <span>Supported: CSV, XLSX</span>
+          <span>Multiple files supported</span>
         </div>
-      </CardContent>
-    </Card>
-  );
+        <div className="text-right font-medium">
+          {getTotalFileCount()} file{getTotalFileCount() !== 1 ? 's' : ''} selected
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+);
 }

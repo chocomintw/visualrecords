@@ -46,11 +46,26 @@ export default function DataVisualization({ data }: DataVisualizationProps) {
   return (
     <div className="space-y-6">
       <Tabs defaultValue="daily" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="daily">Daily Activity</TabsTrigger>
-          <TabsTrigger value="contacts">Top Contacts</TabsTrigger>
-          <TabsTrigger value="unknown">Unknown Numbers</TabsTrigger>
-        </TabsList>
+            <TabsList className="grid w-full grid-cols-3 max-w-2xl mx-auto p-0 bg-muted rounded-lg">
+            <TabsTrigger 
+                value="daily" 
+                className="py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+            >
+                Daily Activity
+            </TabsTrigger>
+            <TabsTrigger 
+                value="contacts" 
+                className="py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+            >
+                Top Contacts
+            </TabsTrigger>
+            <TabsTrigger 
+                value="unknown" 
+                className="py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+            >
+                Unknown Numbers
+            </TabsTrigger>
+            </TabsList>
 
         {/* Daily Activity Tab */}
         <TabsContent value="daily" className="space-y-6">

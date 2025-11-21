@@ -30,34 +30,43 @@ export default function DataTable({ data }: DataTableProps) {
   return (
     <div className="space-y-6">
       <Tabs defaultValue="daily" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="daily" className="flex items-center gap-2">
+        <TabsList className="grid w-full grid-cols-3 max-w-2xl mx-auto p-0 bg-muted rounded-lg">
+        <TabsTrigger 
+            value="daily" 
+            className="flex items-center gap-2 py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+        >
             <Calendar className="h-4 w-4" />
             Daily Activity
-          </TabsTrigger>
-          <TabsTrigger value="contacts" className="flex items-center gap-2">
+        </TabsTrigger>
+        <TabsTrigger 
+            value="contacts" 
+            className="flex items-center gap-2 py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+        >
             <Users className="h-4 w-4" />
             Contact Interactions
-          </TabsTrigger>
-          <TabsTrigger value="unknown" className="flex items-center gap-2">
+        </TabsTrigger>
+        <TabsTrigger 
+            value="unknown" 
+            className="flex items-center gap-2 py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+        >
             <UserX className="h-4 w-4" />
             Unknown Numbers
-          </TabsTrigger>
+        </TabsTrigger>
         </TabsList>
 
-        {/* Daily Activity Tab */}
-        <TabsContent value="daily">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
-                Daily Communication Activity
-              </CardTitle>
-              <CardDescription>
-                Complete breakdown of SMS and call activity by date
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+      {/* Daily Activity Tab */}
+      <TabsContent value="daily" className="mt-6">
+        <Card>
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-2 text-xl">
+              <Calendar className="h-5 w-5" />
+              Daily Communication Activity
+            </CardTitle>
+            <CardDescription className="text-base">
+              Complete breakdown of SMS and call activity by date
+            </CardDescription>
+          </CardHeader>
+            <CardContent className="pt-4 px-6">
               <Table>
                 <TableCaption>
                   Total: {dailyActivity.length} days of activity • {sms.length} texts • {calls.length} calls

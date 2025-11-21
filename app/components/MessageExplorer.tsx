@@ -172,27 +172,27 @@ export default function MessageExplorer({ data }: MessageExplorerProps) {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[600px]">
-      {/* Conversations List */}
-      <Card className="lg:col-span-1">
-        <CardHeader>
-          <CardTitle>Conversations</CardTitle>
-          <CardDescription>
-            {conversations.length} contacts with messages
-          </CardDescription>
-          <div className="relative">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search contacts or messages..."
-              className="pl-8"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          <ScrollArea className="h-[500px]">
-            <div className="space-y-1 p-2">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[700px]">
+        {/* Conversations List */}
+        <Card className="lg:col-span-1">
+        <CardHeader className="pb-4">
+        <CardTitle className="text-xl">Conversations</CardTitle>
+        <CardDescription className="text-base">
+          {conversations.length} contacts with messages
+        </CardDescription>
+        <div className="relative mt-2">
+          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search contacts or messages..."
+            className="pl-10 py-2"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+      </CardHeader>
+      <CardContent className="p-0">
+        <ScrollArea className="h-[580px]">
+          <div className="space-y-2 p-3">
               {filteredConversations.map((conversation) => (
                 <div
                   key={conversation.contactName}
@@ -255,27 +255,27 @@ export default function MessageExplorer({ data }: MessageExplorerProps) {
       </Card>
 
       {/* Message History */}
-      <Card className="lg:col-span-2">
-        <CardHeader>
-          <CardTitle>
+        <Card className="lg:col-span-2">
+        <CardHeader className="pb-4">
+            <CardTitle className="text-xl">
             {selectedConversation ? selectedConversation.contactName : 'Select a conversation'}
-          </CardTitle>
-          <CardDescription>
+            </CardTitle>
+            <CardDescription className="text-base">
             {selectedConversation && (
-              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4">
                 <span>{selectedConversation.messageCount} messages</span>
                 <span>{selectedConversation.callCount} calls</span>
                 <span>
-                  First activity: {new Date(selectedConversation.messages[0]?.Timestamp).toLocaleDateString()} - 
-                  Last activity: {new Date(selectedConversation.lastActivity).toLocaleDateString()}
+                    First activity: {new Date(selectedConversation.messages[0]?.Timestamp).toLocaleDateString()} - 
+                    Last activity: {new Date(selectedConversation.lastActivity).toLocaleDateString()}
                 </span>
-              </div>
+                </div>
             )}
-          </CardDescription>
+            </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
-          <ScrollArea className="h-[500px]">
-            <div className="space-y-4 p-6">
+            <ScrollArea className="h-[640px]">
+                <div className="space-y-4 p-4 pb-2">
               {selectedConversation ? (
                 selectedConversation.messages.map((message, index) => (
                   <div
