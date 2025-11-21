@@ -7,8 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "export": "bun next build && next export",
-    "deploy": "bun run build && gh-pages -d out -t true" 
+    "deploy": "bun run build && touch out/.nojekyll && gh-pages -d out"
   },
   "dependencies": {
     "@radix-ui/react-label": "^2.1.8",
