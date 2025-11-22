@@ -98,34 +98,34 @@ export function validateSMSData(data: any[]): SMS[] {
   const validated: SMS[] = []
 
   for (const item of data) {
-    // Skip the header row
-    if (item["SMS"] === "SMS #") {
+    // Skip the header row - check if this looks like a header
+    const smsId = String(item["SMS #"] || item["SMS"] || "")
+    const sender = String(item["Sender Number"] || item["__EMPTY"] || "")
+    const receiver = String(item["Receiver Number"] || item["__EMPTY_1"] || "")
+    const message = String(item["Message Body"] || item["__EMPTY_2"] || "")
+    const type = String(item["Type"] || item["__EMPTY_3"] || "")
+    const timestamp = String(item["Timestamp"] || item["__EMPTY_4"] || "")
+
+    // Skip if this looks like a header row (contains header text)
+    if (sender === "Sender Number" || receiver === "Receiver Number" || message === "Message Body") {
       continue
     }
 
-    // Fixed mapping for Excel format:
-    // SMS = "SMS #"
-    // __EMPTY = "Sender Number"
-    // __EMPTY_1 = "Receiver Number" 
-    // __EMPTY_2 = "Message Body"
-    // __EMPTY_3 = "Type"
-    // __EMPTY_4 = "Timestamp"
-    
-    const smsId = String(item["SMS"] || "")
-    const sender = String(item["__EMPTY"] || "")
-    const receiver = String(item["__EMPTY_1"] || "")
-    const message = String(item["__EMPTY_2"] || "")
-    const type = (item["__EMPTY_3"] || "Unknown") as "Sender" | "Receiver"
-    const timestamp = String(item["__EMPTY_4"] || "")
+    // Skip if this looks like invalid data (contains header-like values)
+    if (smsId === "SMS #" || type === "Type" || timestamp === "Timestamp") {
+      continue
+    }
 
-    // Validate required fields
-    if (sender && receiver && message && timestamp) {
+    // Validate required fields have actual data (not empty or header values)
+    if (sender && receiver && message && timestamp && 
+        sender !== "Sender Number" && receiver !== "Receiver Number" && 
+        message !== "Message Body" && timestamp !== "Timestamp") {
       validated.push({
         "SMS #": smsId,
         "Sender Number": sender,
         "Receiver Number": receiver,
         "Message Body": message,
-        "Type": type,
+        "Type": (type || "Unknown") as "Sender" | "Receiver",
         "Timestamp": timestamp
       })
     }
@@ -150,31 +150,32 @@ export function validateCallData(data: any[]): CallLog[] {
   const validated: CallLog[] = []
 
   for (const item of data) {
-    // Skip the header row
-    if (item["Call"] === "Call #") {
+    // Skip the header row - check if this looks like a header
+    const callId = String(item["Call #"] || item["Call"] || "")
+    const sender = String(item["Sender Number"] || item["__EMPTY"] || "")
+    const receiver = String(item["Receiver Number"] || item["__EMPTY_1"] || "")
+    const type = String(item["Type"] || item["__EMPTY_2"] || "")
+    const timestamp = String(item["Timestamp"] || item["__EMPTY_3"] || "")
+
+    // Skip if this looks like a header row (contains header text)
+    if (sender === "Sender Number" || receiver === "Receiver Number") {
       continue
     }
 
-    // Fixed mapping for Excel format:
-    // Call = "Call #"
-    // __EMPTY = "Sender Number"
-    // __EMPTY_1 = "Receiver Number"
-    // __EMPTY_2 = "Type" 
-    // __EMPTY_3 = "Timestamp"
-    
-    const callId = String(item["Call"] || "")
-    const sender = String(item["__EMPTY"] || "")
-    const receiver = String(item["__EMPTY_1"] || "")
-    const type = (item["__EMPTY_2"] || "Unknown") as "Sender" | "Receiver"
-    const timestamp = String(item["__EMPTY_3"] || "")
+    // Skip if this looks like invalid data (contains header-like values)
+    if (callId === "Call #" || type === "Type" || timestamp === "Timestamp") {
+      continue
+    }
 
-    // Validate required fields
-    if (sender && receiver && timestamp) {
+    // Validate required fields have actual data (not empty or header values)
+    if (sender && receiver && timestamp && 
+        sender !== "Sender Number" && receiver !== "Receiver Number" && 
+        timestamp !== "Timestamp") {
       validated.push({
         "Call #": callId,
         "Sender Number": sender,
         "Receiver Number": receiver,
-        "Type": type,
+        "Type": (type || "Unknown") as "Sender" | "Receiver",
         "Timestamp": timestamp
       })
     }
@@ -199,17 +200,17 @@ export function validateContactData(data: any[]): Contact[] {
   const validated: Contact[] = []
 
   for (const item of data) {
-    // Skip the header row - check for "Contact Name" in the first column
-    if (item["Contact Name"] === "Contact Name" && item["Phone Number"] === "Phone Number") {
-      continue
-    }
-
-    // Use the actual column names from the Excel file
+    // Skip the header row - check if this looks like a header
     const name = String(item["Contact Name"] || "")
     const phone = String(item["Phone Number"] || "")
 
-    // Validate required fields
-    if (name && phone) {
+    // Skip if this looks like a header row (contains header text)
+    if (name === "Contact Name" || phone === "Phone Number") {
+      continue
+    }
+
+    // Validate required fields have actual data (not empty or header values)
+    if (name && phone && name !== "Contact Name" && phone !== "Phone Number") {
       validated.push({
         "Contact Name": name,
         "Phone Number": phone,
