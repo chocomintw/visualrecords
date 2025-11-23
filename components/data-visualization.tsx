@@ -20,25 +20,38 @@ import {
 import { useAppStore } from "@/lib/store"
 
 export default function DataVisualization() {
-  const { parsedData } = useAppStore()
-  const { sms, calls, contacts } = parsedData
+  const communicationStats = useAppStore((state) => state.communicationStats)
 
-  // Process data for charts
-  const callsPerDay = processCallsPerDay(calls)
-  const textsPerDay = processTextsPerDay(sms)
-  const textsPerContact = processTextsPerContact(sms, contacts)
-  const callsPerContact = processCallsPerContact(calls, contacts)
-  const topContactsByInteractions = processTopContactsByInteractions(sms, calls, contacts)
-  const contactsActivityByDay = processContactsActivityByDay(sms, calls, contacts)
+  if (!communicationStats) {
+    return null
+  }
 
-  // Process data for unknown numbers
-  const textsPerUnknown = processTextsPerUnknown(sms, contacts)
-  const callsPerUnknown = processCallsPerUnknown(calls, contacts)
-  const topUnknownByInteractions = processTopUnknownByInteractions(sms, calls, contacts)
-  const unknownNumbersByDay = processUnknownNumbersByDay(sms, calls, contacts)
+  const {
+    callsPerDay,
+    textsPerDay,
+    textsPerContact,
+    callsPerContact,
+    topContactsByInteractions,
+    contactsActivityByDay,
+    textsPerUnknown,
+    callsPerUnknown,
+    topUnknownByInteractions,
+    unknownNumbersByDay
+  } = communicationStats
 
   const COLORS = ["#3b82f6", "#10b981", "#8b5cf6", "#f59e0b", "#ef4444", "#06b6d4", "#84cc16", "#f97316"]
   const UNKNOWN_COLORS = ["#ef4444", "#f97316", "#f59e0b", "#eab308", "#84cc16", "#06b6d4", "#8b5cf6", "#a855f7"]
+
+  const tooltipStyle = {
+    contentStyle: {
+      backgroundColor: "hsl(var(--popover))",
+      borderColor: "hsl(var(--border))",
+      borderRadius: "var(--radius)",
+      color: "hsl(var(--popover-foreground))"
+    },
+    itemStyle: { color: "hsl(var(--popover-foreground))" },
+    labelStyle: { color: "hsl(var(--popover-foreground))" }
+  }
 
   return (
     <div className="space-y-6">
@@ -80,6 +93,7 @@ export default function DataVisualization() {
                     />
                     <YAxis />
                     <Tooltip
+                      {...tooltipStyle}
                       labelFormatter={(value) => {
                         const date = new Date(value)
                         return date.toLocaleDateString("en-US", {
@@ -90,7 +104,7 @@ export default function DataVisualization() {
                         })
                       }}
                     />
-                    <Bar dataKey="count" fill="#10b981" name="Calls" />
+                    <Bar dataKey="count" fill="#10b981" name="Calls" isAnimationActive={false} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -115,6 +129,7 @@ export default function DataVisualization() {
                     />
                     <YAxis />
                     <Tooltip
+                      {...tooltipStyle}
                       labelFormatter={(value) => {
                         const date = new Date(value)
                         return date.toLocaleDateString("en-US", {
@@ -125,7 +140,7 @@ export default function DataVisualization() {
                         })
                       }}
                     />
-                    <Bar dataKey="count" fill="#3b82f6" name="Texts" />
+                    <Bar dataKey="count" fill="#3b82f6" name="Texts" isAnimationActive={false} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -154,12 +169,13 @@ export default function DataVisualization() {
                       outerRadius={80}
                       fill="#8884d8"
                       dataKey="value"
+                      isAnimationActive={false}
                     >
                       {textsPerContact.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(value) => [`${value} texts`, "Count"]} />
+                    <Tooltip {...tooltipStyle} formatter={(value) => [`${value} texts`, "Count"]} />
                     <Legend />
                   </PieChart>
                 </ResponsiveContainer>
@@ -184,12 +200,13 @@ export default function DataVisualization() {
                       outerRadius={80}
                       fill="#8884d8"
                       dataKey="value"
+                      isAnimationActive={false}
                     >
                       {callsPerContact.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(value) => [`${value} calls`, "Count"]} />
+                    <Tooltip {...tooltipStyle} formatter={(value) => [`${value} calls`, "Count"]} />
                     <Legend />
                   </PieChart>
                 </ResponsiveContainer>
@@ -215,6 +232,7 @@ export default function DataVisualization() {
                     />
                     <YAxis />
                     <Tooltip
+                      {...tooltipStyle}
                       labelFormatter={(value) => {
                         const date = new Date(value)
                         return date.toLocaleDateString("en-US", {
@@ -226,8 +244,8 @@ export default function DataVisualization() {
                       }}
                     />
                     <Legend />
-                    <Line type="monotone" dataKey="texts" stroke="#3b82f6" strokeWidth={2} name="Contact Texts" />
-                    <Line type="monotone" dataKey="calls" stroke="#10b981" strokeWidth={2} name="Contact Calls" />
+                    <Line type="monotone" dataKey="texts" stroke="#3b82f6" strokeWidth={2} name="Contact Texts" isAnimationActive={false} />
+                    <Line type="monotone" dataKey="calls" stroke="#10b981" strokeWidth={2} name="Contact Calls" isAnimationActive={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -245,10 +263,10 @@ export default function DataVisualization() {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis type="number" />
                     <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 12 }} />
-                    <Tooltip />
+                    <Tooltip {...tooltipStyle} />
                     <Legend />
-                    <Bar dataKey="texts" fill="#3b82f6" name="Texts" />
-                    <Bar dataKey="calls" fill="#10b981" name="Calls" />
+                    <Bar dataKey="texts" fill="#3b82f6" name="Texts" isAnimationActive={false} />
+                    <Bar dataKey="calls" fill="#10b981" name="Calls" isAnimationActive={false} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -277,12 +295,13 @@ export default function DataVisualization() {
                       outerRadius={80}
                       fill="#8884d8"
                       dataKey="value"
+                      isAnimationActive={false}
                     >
                       {textsPerUnknown.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={UNKNOWN_COLORS[index % UNKNOWN_COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(value) => [`${value} texts`, "Count"]} />
+                    <Tooltip {...tooltipStyle} formatter={(value) => [`${value} texts`, "Count"]} />
                     <Legend />
                   </PieChart>
                 </ResponsiveContainer>
@@ -307,12 +326,13 @@ export default function DataVisualization() {
                       outerRadius={80}
                       fill="#8884d8"
                       dataKey="value"
+                      isAnimationActive={false}
                     >
                       {callsPerUnknown.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={UNKNOWN_COLORS[index % UNKNOWN_COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(value) => [`${value} calls`, "Count"]} />
+                    <Tooltip {...tooltipStyle} formatter={(value) => [`${value} calls`, "Count"]} />
                     <Legend />
                   </PieChart>
                 </ResponsiveContainer>
@@ -338,6 +358,7 @@ export default function DataVisualization() {
                     />
                     <YAxis />
                     <Tooltip
+                      {...tooltipStyle}
                       labelFormatter={(value) => {
                         const date = new Date(value)
                         return date.toLocaleDateString("en-US", {
@@ -349,8 +370,8 @@ export default function DataVisualization() {
                       }}
                     />
                     <Legend />
-                    <Line type="monotone" dataKey="texts" stroke="#ef4444" strokeWidth={2} name="Unknown Texts" />
-                    <Line type="monotone" dataKey="calls" stroke="#f97316" strokeWidth={2} name="Unknown Calls" />
+                    <Line type="monotone" dataKey="texts" stroke="#ef4444" strokeWidth={2} name="Unknown Texts" isAnimationActive={false} />
+                    <Line type="monotone" dataKey="calls" stroke="#f97316" strokeWidth={2} name="Unknown Calls" isAnimationActive={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -368,10 +389,10 @@ export default function DataVisualization() {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis type="number" />
                     <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 12 }} />
-                    <Tooltip />
+                    <Tooltip {...tooltipStyle} />
                     <Legend />
-                    <Bar dataKey="texts" fill="#ef4444" name="Texts" />
-                    <Bar dataKey="calls" fill="#f97316" name="Calls" />
+                    <Bar dataKey="texts" fill="#ef4444" name="Texts" isAnimationActive={false} />
+                    <Bar dataKey="calls" fill="#f97316" name="Calls" isAnimationActive={false} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -383,286 +404,4 @@ export default function DataVisualization() {
   )
 }
 
-// Helper functions (keep the same as before)
-function processContactsActivityByDay(sms: any[], calls: any[], contacts: any[]) {
-  const contactMap = createContactMap(contacts)
-  const dailyData: { [key: string]: { texts: number; calls: number } } = {}
 
-  // Process SMS from known contacts
-  sms.forEach((message) => {
-    const date = message.Timestamp.split(" ")[0]
-    const contactNumber = message.Type === "Sender" ? message["Receiver Number"] : message["Sender Number"]
-
-    // Only include if we have a contact name
-    if (contactMap[contactNumber]) {
-      if (!dailyData[date]) {
-        dailyData[date] = { texts: 0, calls: 0 }
-      }
-      dailyData[date].texts++
-    }
-  })
-
-  // Process Calls from known contacts
-  calls.forEach((call) => {
-    const date = call.Timestamp.split(" ")[0]
-    const contactNumber = call.Type === "Sender" ? call["Receiver Number"] : call["Sender Number"]
-
-    // Only include if we have a contact name
-    if (contactMap[contactNumber]) {
-      if (!dailyData[date]) {
-        dailyData[date] = { texts: 0, calls: 0 }
-      }
-      dailyData[date].calls++
-    }
-  })
-
-  return Object.entries(dailyData)
-    .map(([date, counts]) => ({
-      date,
-      texts: counts.texts,
-      calls: counts.calls,
-      total: counts.texts + counts.calls,
-    }))
-    .sort((a, b) => a.date.localeCompare(b.date))
-}
-
-function processCallsPerDay(calls: any[]) {
-  const dayCounts: { [key: string]: number } = {}
-
-  calls.forEach((call) => {
-    const date = call.Timestamp.split(" ")[0]
-    dayCounts[date] = (dayCounts[date] || 0) + 1
-  })
-
-  return Object.entries(dayCounts)
-    .map(([date, count]) => ({ date, count }))
-    .sort((a, b) => a.date.localeCompare(b.date))
-}
-
-function processTextsPerDay(sms: any[]) {
-  const dayCounts: { [key: string]: number } = {}
-
-  sms.forEach((message) => {
-    const date = message.Timestamp.split(" ")[0]
-    dayCounts[date] = (dayCounts[date] || 0) + 1
-  })
-
-  return Object.entries(dayCounts)
-    .map(([date, count]) => ({ date, count }))
-    .sort((a, b) => a.date.localeCompare(b.date))
-}
-
-function processTextsPerContact(sms: any[], contacts: any[]) {
-  const contactMap = createContactMap(contacts)
-  const contactCounts: { [key: string]: number } = {}
-
-  sms.forEach((message) => {
-    const contactNumber = message.Type === "Sender" ? message["Receiver Number"] : message["Sender Number"]
-    const contactName = contactMap[contactNumber]
-    // Only include if we have a contact name
-    if (contactName) {
-      contactCounts[contactName] = (contactCounts[contactName] || 0) + 1
-    }
-  })
-
-  return Object.entries(contactCounts)
-    .map(([name, value]) => ({ name: truncateName(name), value }))
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 8)
-}
-
-function processCallsPerContact(calls: any[], contacts: any[]) {
-  const contactMap = createContactMap(contacts)
-  const contactCounts: { [key: string]: number } = {}
-
-  calls.forEach((call) => {
-    const contactNumber = call.Type === "Sender" ? call["Receiver Number"] : call["Sender Number"]
-    const contactName = contactMap[contactNumber]
-    // Only include if we have a contact name
-    if (contactName) {
-      contactCounts[contactName] = (contactCounts[contactName] || 0) + 1
-    }
-  })
-
-  return Object.entries(contactCounts)
-    .map(([name, value]) => ({ name: truncateName(name), value }))
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 8)
-}
-
-function processTopContactsByInteractions(sms: any[], calls: any[], contacts: any[]) {
-  const contactMap = createContactMap(contacts)
-  const interactionCounts: { [key: string]: { texts: number; calls: number } } = {}
-
-  // Count SMS - only for known contacts
-  sms.forEach((message) => {
-    const contactNumber = message.Type === "Sender" ? message["Receiver Number"] : message["Sender Number"]
-    const contactName = contactMap[contactNumber]
-    if (contactName) {
-      if (!interactionCounts[contactName]) {
-        interactionCounts[contactName] = { texts: 0, calls: 0 }
-      }
-      interactionCounts[contactName].texts++
-    }
-  })
-
-  // Count Calls - only for known contacts
-  calls.forEach((call) => {
-    const contactNumber = call.Type === "Sender" ? call["Receiver Number"] : call["Sender Number"]
-    const contactName = contactMap[contactNumber]
-    if (contactName) {
-      if (!interactionCounts[contactName]) {
-        interactionCounts[contactName] = { texts: 0, calls: 0 }
-      }
-      interactionCounts[contactName].calls++
-    }
-  })
-
-  // Get top contacts by total interactions
-  return Object.entries(interactionCounts)
-    .map(([name, counts]) => ({
-      name: truncateName(name),
-      texts: counts.texts,
-      calls: counts.calls,
-      total: counts.texts + counts.calls,
-    }))
-    .sort((a, b) => b.total - a.total)
-    .slice(0, 10)
-}
-
-function processTextsPerUnknown(sms: any[], contacts: any[]) {
-  const contactMap = createContactMap(contacts)
-  const unknownCounts: { [key: string]: number } = {}
-
-  sms.forEach((message) => {
-    const contactNumber = message.Type === "Sender" ? message["Receiver Number"] : message["Sender Number"]
-    // Only include if we DON'T have a contact name
-    if (!contactMap[contactNumber]) {
-      unknownCounts[contactNumber] = (unknownCounts[contactNumber] || 0) + 1
-    }
-  })
-
-  return Object.entries(unknownCounts)
-    .map(([number, value]) => ({
-      name: truncateNumber(number),
-      value,
-    }))
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 8)
-}
-
-function processCallsPerUnknown(calls: any[], contacts: any[]) {
-  const contactMap = createContactMap(contacts)
-  const unknownCounts: { [key: string]: number } = {}
-
-  calls.forEach((call) => {
-    const contactNumber = call.Type === "Sender" ? call["Receiver Number"] : call["Sender Number"]
-    // Only include if we DON'T have a contact name
-    if (!contactMap[contactNumber]) {
-      unknownCounts[contactNumber] = (unknownCounts[contactNumber] || 0) + 1
-    }
-  })
-
-  return Object.entries(unknownCounts)
-    .map(([number, value]) => ({
-      name: truncateNumber(number),
-      value,
-    }))
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 8)
-}
-
-function processTopUnknownByInteractions(sms: any[], calls: any[], contacts: any[]) {
-  const contactMap = createContactMap(contacts)
-  const interactionCounts: { [key: string]: { texts: number; calls: number } } = {}
-
-  // Count SMS - only for unknown numbers
-  sms.forEach((message) => {
-    const contactNumber = message.Type === "Sender" ? message["Receiver Number"] : message["Sender Number"]
-    if (!contactMap[contactNumber]) {
-      if (!interactionCounts[contactNumber]) {
-        interactionCounts[contactNumber] = { texts: 0, calls: 0 }
-      }
-      interactionCounts[contactNumber].texts++
-    }
-  })
-
-  // Count Calls - only for unknown numbers
-  calls.forEach((call) => {
-    const contactNumber = call.Type === "Sender" ? call["Receiver Number"] : call["Sender Number"]
-    if (!contactMap[contactNumber]) {
-      if (!interactionCounts[contactNumber]) {
-        interactionCounts[contactNumber] = { texts: 0, calls: 0 }
-      }
-      interactionCounts[contactNumber].calls++
-    }
-  })
-
-  // Get top unknown numbers by total interactions
-  return Object.entries(interactionCounts)
-    .map(([number, counts]) => ({
-      name: truncateNumber(number),
-      texts: counts.texts,
-      calls: counts.calls,
-      total: counts.texts + counts.calls,
-    }))
-    .sort((a, b) => b.total - a.total)
-    .slice(0, 10)
-}
-
-function processUnknownNumbersByDay(sms: any[], calls: any[], contacts: any[]) {
-  const contactMap = createContactMap(contacts)
-  const dailyData: { [key: string]: { texts: number; calls: number } } = {}
-
-  // Process SMS from unknown numbers
-  sms.forEach((message) => {
-    const date = message.Timestamp.split(" ")[0]
-    const contactNumber = message.Type === "Sender" ? message["Receiver Number"] : message["Sender Number"]
-
-    if (!contactMap[contactNumber]) {
-      if (!dailyData[date]) {
-        dailyData[date] = { texts: 0, calls: 0 }
-      }
-      dailyData[date].texts++
-    }
-  })
-
-  // Process Calls from unknown numbers
-  calls.forEach((call) => {
-    const date = call.Timestamp.split(" ")[0]
-    const contactNumber = call.Type === "Sender" ? call["Receiver Number"] : call["Sender Number"]
-
-    if (!contactMap[contactNumber]) {
-      if (!dailyData[date]) {
-        dailyData[date] = { texts: 0, calls: 0 }
-      }
-      dailyData[date].calls++
-    }
-  })
-
-  return Object.entries(dailyData)
-    .map(([date, counts]) => ({
-      date,
-      texts: counts.texts,
-      calls: counts.calls,
-      total: counts.texts + counts.calls,
-    }))
-    .sort((a, b) => a.date.localeCompare(b.date))
-}
-
-function createContactMap(contacts: any[]): { [key: string]: string } {
-  const contactMap: { [key: string]: string } = {}
-  contacts.forEach((contact) => {
-    contactMap[contact["Phone Number"]] = contact["Contact Name"]
-  })
-  return contactMap
-}
-
-function truncateName(name: string): string {
-  return name.length > 20 ? name.substring(0, 20) + "..." : name
-}
-
-function truncateNumber(number: string): string {
-  if (number.length <= 12) return number
-  return number.substring(0, 8) + "..." + number.substring(number.length - 4)
-}

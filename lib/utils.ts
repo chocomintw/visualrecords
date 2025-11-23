@@ -58,7 +58,7 @@ export async function parseFile(file: File): Promise<any[]> {
           const firstSheetName = workbook.SheetNames[0]
           const worksheet = workbook.Sheets[firstSheetName]
           const jsonData = XLSX.utils.sheet_to_json(worksheet)
-          
+
           console.log(`Parsed ${jsonData.length} rows from Excel file ${file.name}`)
           if (jsonData.length > 0) {
             console.log(`Excel headers for ${file.name}:`, Object.keys(jsonData[0] as any))
@@ -89,7 +89,7 @@ export async function parseFile(file: File): Promise<any[]> {
 
 export function validateSMSData(data: any[]): SMS[] {
   console.log("Validating SMS data, raw data count:", data.length)
-  
+
   if (data.length === 0) {
     console.log("No SMS data to validate")
     return []
@@ -117,9 +117,9 @@ export function validateSMSData(data: any[]): SMS[] {
     }
 
     // Validate required fields have actual data (not empty or header values)
-    if (sender && receiver && message && timestamp && 
-        sender !== "Sender Number" && receiver !== "Receiver Number" && 
-        message !== "Message Body" && timestamp !== "Timestamp") {
+    if (sender && receiver && message && timestamp &&
+      sender !== "Sender Number" && receiver !== "Receiver Number" &&
+      message !== "Message Body" && timestamp !== "Timestamp") {
       validated.push({
         "SMS #": smsId,
         "Sender Number": sender,
@@ -135,13 +135,13 @@ export function validateSMSData(data: any[]): SMS[] {
   if (validated.length > 0) {
     console.log("Sample validated SMS:", validated[0])
   }
-  
+
   return validated
 }
 
 export function validateCallData(data: any[]): CallLog[] {
   console.log("Validating Call data, raw data count:", data.length)
-  
+
   if (data.length === 0) {
     console.log("No Call data to validate")
     return []
@@ -168,9 +168,9 @@ export function validateCallData(data: any[]): CallLog[] {
     }
 
     // Validate required fields have actual data (not empty or header values)
-    if (sender && receiver && timestamp && 
-        sender !== "Sender Number" && receiver !== "Receiver Number" && 
-        timestamp !== "Timestamp") {
+    if (sender && receiver && timestamp &&
+      sender !== "Sender Number" && receiver !== "Receiver Number" &&
+      timestamp !== "Timestamp") {
       validated.push({
         "Call #": callId,
         "Sender Number": sender,
@@ -185,13 +185,13 @@ export function validateCallData(data: any[]): CallLog[] {
   if (validated.length > 0) {
     console.log("Sample validated Call:", validated[0])
   }
-  
+
   return validated
 }
 
 export function validateContactData(data: any[]): Contact[] {
   console.log("Validating Contact data, raw data count:", data.length)
-  
+
   if (data.length === 0) {
     console.log("No Contact data to validate")
     return []
@@ -214,7 +214,7 @@ export function validateContactData(data: any[]): Contact[] {
       validated.push({
         "Contact Name": name,
         "Phone Number": phone,
-        "Additional Info": undefined
+        "Full Name": undefined
       })
     }
   }
@@ -223,6 +223,134 @@ export function validateContactData(data: any[]): Contact[] {
   if (validated.length > 0) {
     console.log("Sample validated Contact:", validated[0])
   }
-  
+
   return validated
+}
+
+export async function parseBankData(file: File): Promise<any[]> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+
+    reader.onload = (e) => {
+      try {
+        const data = e.target?.result
+        if (!data) {
+          reject(new Error("No data found in file"))
+          return
+        }
+
+        console.log(`Parsing bank file: ${file.name}, size: ${file.size} bytes`)
+
+        let rawData: any[] = []
+
+        if (file.name.endsWith(".csv")) {
+          const text = data as string
+          const lines = text.split("\n").filter((line) => line.trim())
+
+          // Find the header line (starts with ",From,Routing")
+          // Based on user input: ",From,Routing,Reason,Amount,Balance,Date,,,"
+          let headerIndex = -1
+          for (let i = 0; i < Math.min(10, lines.length); i++) {
+            if (lines[i].includes("From") && lines[i].includes("Amount") && lines[i].includes("Date")) {
+              headerIndex = i
+              break
+            }
+          }
+
+          if (headerIndex === -1) {
+            console.warn("Could not find standard bank header, trying default parsing")
+            headerIndex = 0
+          }
+
+          const headers = lines[headerIndex].split(",").map(h => h.trim().replace(/['"]/g, ""))
+
+          rawData = lines.slice(headerIndex + 1).map(line => {
+            // Handle CSV parsing with potential quoted values
+            const values: string[] = []
+            let inQuotes = false
+            let currentValue = ""
+
+            for (let i = 0; i < line.length; i++) {
+              const char = line[i]
+              if (char === '"') {
+                inQuotes = !inQuotes
+              } else if (char === ',' && !inQuotes) {
+                values.push(currentValue.trim().replace(/['"]/g, ""))
+                currentValue = ""
+              } else {
+                currentValue += char
+              }
+            }
+            values.push(currentValue.trim().replace(/['"]/g, ""))
+
+            const obj: any = {}
+            headers.forEach((header, index) => {
+              if (header) { // Only map if header is not empty
+                obj[header] = values[index] || ""
+              }
+            })
+            return obj
+          })
+
+        } else {
+          // Excel
+          const workbook = XLSX.read(data, { type: "binary" })
+          const firstSheetName = workbook.SheetNames[0]
+          const worksheet = workbook.Sheets[firstSheetName]
+
+          // Convert to array of arrays first to find header
+          const jsonArray = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][]
+
+          let headerIndex = -1
+          for (let i = 0; i < Math.min(10, jsonArray.length); i++) {
+            const row = jsonArray[i]
+            if (row.includes("From") && row.includes("Amount") && row.includes("Date")) {
+              headerIndex = i
+              break
+            }
+          }
+
+          if (headerIndex !== -1) {
+            // Re-parse with header row
+            rawData = XLSX.utils.sheet_to_json(worksheet, { range: headerIndex })
+          } else {
+            rawData = XLSX.utils.sheet_to_json(worksheet)
+          }
+        }
+
+        // Transform to BankRecord
+        const validated = rawData.map((item, index) => {
+          // Clean amount string "-100.00 $" -> -100.00
+          const amountStr = String(item["Amount"] || "").replace(/[$,]/g, "").trim()
+          const balanceStr = String(item["Balance"] || "").replace(/[$,]/g, "").trim()
+
+          return {
+            id: String(index),
+            from: String(item["From"] || ""),
+            routing: String(item["Routing"] || ""),
+            reason: String(item["Reason"] || ""),
+            amount: parseFloat(amountStr) || 0,
+            balance: parseFloat(balanceStr) || 0,
+            date: String(item["Date"] || ""),
+            rawDate: String(item["Date"] || "")
+          }
+        }).filter(r => r.from && r.date) // Basic validation
+
+        console.log(`Parsed ${validated.length} bank records`)
+        resolve(validated)
+
+      } catch (error) {
+        console.error(`Error parsing bank file ${file.name}:`, error)
+        reject(error)
+      }
+    }
+
+    reader.onerror = () => reject(new Error("Failed to read file"))
+
+    if (file.name.endsWith(".csv")) {
+      reader.readAsText(file)
+    } else {
+      reader.readAsBinaryString(file)
+    }
+  })
 }

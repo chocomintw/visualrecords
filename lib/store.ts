@@ -1,30 +1,52 @@
 import { create } from "zustand"
-import type { UploadedFiles, ParsedData } from "@/types"
+import type { UploadedFiles, ParsedData, Contact } from "@/types"
+import { processBankData, processCommunicationData, BankStats, CommunicationStats } from "@/lib/analytics"
+import { parseFile, validateSMSData, validateCallData, validateContactData, parseBankData } from "@/lib/utils"
 
 interface AppState {
   // Current state
   parsedData: ParsedData
+  bankStats: BankStats | null
+  communicationStats: CommunicationStats | null
   isLoading: boolean
   error: string
 
   // Actions
   setParsedData: (data: ParsedData) => void
+  setContacts: (contacts: Contact[]) => void
   setLoading: (loading: boolean) => void
   setError: (error: string) => void
   resetState: () => void
   handleFilesUpload: (files: UploadedFiles) => Promise<void>
 }
 
-import { parseFile, validateSMSData, validateCallData, validateContactData } from "@/lib/utils"
-
 export const useAppStore = create<AppState>((set, get) => ({
   // Initial state
-  parsedData: { sms: [], calls: [], contacts: [] },
+  parsedData: { sms: [], calls: [], contacts: [], bank: [] },
+  bankStats: null,
+  communicationStats: null,
   isLoading: false,
   error: "",
 
   // Actions
-  setParsedData: (data) => set({ parsedData: data }),
+  setParsedData: (data) => {
+    set({
+      parsedData: data,
+      bankStats: processBankData(data.bank),
+      communicationStats: processCommunicationData(data)
+    })
+  },
+
+  setContacts: (contacts) => {
+    set((state) => {
+      const newData = { ...state.parsedData, contacts }
+      return {
+        parsedData: newData,
+        // Re-process communication stats as they depend on contacts
+        communicationStats: processCommunicationData(newData)
+      }
+    })
+  },
 
   setLoading: (loading) => set({ isLoading: loading }),
 
@@ -32,7 +54,9 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   resetState: () =>
     set({
-      parsedData: { sms: [], calls: [], contacts: [] },
+      parsedData: { sms: [], calls: [], contacts: [], bank: [] },
+      bankStats: null,
+      communicationStats: null,
       error: "",
     }),
 
@@ -46,81 +70,124 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ isLoading: true, error: "" })
 
     try {
-      const newData: ParsedData = { sms: [], calls: [], contacts: [] }
+      const currentData = get().parsedData
+      const newData: ParsedData = { ...currentData }
 
       // Parse SMS data from multiple files
-      if (files.sms && files.sms.length > 0) {
-        console.log(
-          "Processing SMS files:",
-          files.sms.map((f) => f.name),
-        )
-        const allSmsData = []
-        for (const file of files.sms) {
-          const smsData = await parseFile(file)
-          allSmsData.push(...smsData)
+      if (files.sms) {
+        if (files.sms.length > 0) {
+          console.log(
+            "Processing SMS files:",
+            files.sms.map((f) => f.name),
+          )
+          const allSmsData = []
+          for (const file of files.sms) {
+            const smsData = await parseFile(file)
+            allSmsData.push(...smsData)
+          }
+          newData.sms = validateSMSData(allSmsData)
+          console.log("Validated SMS data:", newData.sms.length)
+        } else {
+          newData.sms = []
         }
-        newData.sms = validateSMSData(allSmsData)
-        console.log("Validated SMS data:", newData.sms.length)
       }
 
       // Parse Call data from multiple files
-      if (files.calls && files.calls.length > 0) {
-        console.log(
-          "Processing Calls files:",
-          files.calls.map((f) => f.name),
-        )
-        const allCallData = []
-        for (const file of files.calls) {
-          const callData = await parseFile(file)
-          allCallData.push(...callData)
+      if (files.calls) {
+        if (files.calls.length > 0) {
+          console.log(
+            "Processing Calls files:",
+            files.calls.map((f) => f.name),
+          )
+          const allCallData = []
+          for (const file of files.calls) {
+            const callData = await parseFile(file)
+            allCallData.push(...callData)
+          }
+          newData.calls = validateCallData(allCallData)
+          console.log("Validated Calls data:", newData.calls.length)
+        } else {
+          newData.calls = []
         }
-        newData.calls = validateCallData(allCallData)
-        console.log("Validated Calls data:", newData.calls.length)
       }
 
       // Parse Contact data from multiple files
-      if (files.contacts && files.contacts.length > 0) {
-        console.log(
-          "Processing Contacts files:",
-          files.contacts.map((f) => f.name),
-        )
-        const allContactData = []
-        for (const file of files.contacts) {
-          const contactData = await parseFile(file)
-          allContactData.push(...contactData)
+      if (files.contacts) {
+        if (files.contacts.length > 0) {
+          console.log(
+            "Processing Contacts files:",
+            files.contacts.map((f) => f.name),
+          )
+          const allContactData = []
+          for (const file of files.contacts) {
+            const contactData = await parseFile(file)
+            allContactData.push(...contactData)
+          }
+          newData.contacts = validateContactData(allContactData)
+          console.log("Validated Contacts data:", newData.contacts.length)
+        } else {
+          newData.contacts = []
         }
-        newData.contacts = validateContactData(allContactData)
-        console.log("Validated Contacts data:", newData.contacts.length)
+      }
+
+      // Parse Bank data from multiple files
+      if (files.bank) {
+        if (files.bank.length > 0) {
+          console.log(
+            "Processing Bank files:",
+            files.bank.map((f) => f.name),
+          )
+          const allBankData = []
+          for (const file of files.bank) {
+            // Use specific bank parser
+            const bankData = await parseBankData(file)
+            allBankData.push(...bankData)
+          }
+          newData.bank = allBankData
+          console.log("Validated Bank data:", newData.bank.length)
+        } else {
+          newData.bank = []
+        }
       }
 
       console.log("Final parsed data:", {
         smsCount: newData.sms.length,
         callsCount: newData.calls.length,
         contactsCount: newData.contacts.length,
+        bankCount: newData.bank.length,
       })
 
       // Validate that we have at least one data type
-      if (newData.sms.length === 0 && newData.calls.length === 0) {
-        const fileTypes = []
-        if (files.sms?.length) fileTypes.push("SMS")
-        if (files.calls?.length) fileTypes.push("Call Logs")
-        
-        const errorMsg = `No valid data was found in the uploaded ${fileTypes.join(" and ")} files. Please check that your files contain the required columns and data.`
-        console.error(errorMsg)
-        console.log("Uploaded files:", {
-          smsFiles: files.sms?.map(f => f.name) || [],
-          callFiles: files.calls?.map(f => f.name) || [],
-          contactFiles: files.contacts?.map(f => f.name) || []
-        })
-        set({ error: errorMsg, parsedData: { sms: [], calls: [], contacts: [] } })
+      if (newData.sms.length === 0 && newData.calls.length === 0 && newData.bank.length === 0) {
+        // Only show error if we actually tried to upload something and it failed, 
+        // OR if the user explicitly cleared everything.
+        // But if we are just merging, we might end up with empty state if the user cleared everything.
+
+        // If the user provided files but we ended up with no data, that's an error (parsing failed or empty files).
+        // But here we are just checking the final state.
+
+        // Let's relax this check. If the result is empty, it's empty.
+        // But we want to warn if the *input* files were invalid.
+        // The parsing logic above handles parsing.
+
+        // If we have no data, we should just set the state to empty and return.
+        set({ error: "", parsedData: newData, bankStats: null, communicationStats: null })
         return
       }
 
-      set({ parsedData: newData })
+      // Process stats immediately
+      const bankStats = processBankData(newData.bank)
+      const communicationStats = processCommunicationData(newData)
+
+      set({
+        parsedData: newData,
+        bankStats,
+        communicationStats
+      })
     } catch (err) {
       const errorMsg = `Error processing files: ${err instanceof Error ? err.message : "Unknown error"}`
       console.error("Error processing files:", err)
-      set({ error: errorMsg, parsedData: { sms: [], calls: [], contacts: [] } })
+      set({ error: errorMsg, parsedData: { sms: [], calls: [], contacts: [], bank: [] }, bankStats: null, communicationStats: null })
     } finally {
       set({ isLoading: false })
     }

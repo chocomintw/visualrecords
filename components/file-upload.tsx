@@ -10,14 +10,15 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Upload, FileText, Phone, Users, X, Plus, Info } from "lucide-react"
+import { Upload, FileText, Phone, Users, X, Plus, Info, Wallet } from "lucide-react"
 
 interface FileUploadProps {
   onFilesUpload: (files: UploadedFiles) => void
   isLoading?: boolean
+  allowedTypes?: (keyof UploadedFiles)[]
 }
 
-export default function FileUpload({ onFilesUpload, isLoading = false }: FileUploadProps) {
+export default function FileUpload({ onFilesUpload, isLoading = false, allowedTypes }: FileUploadProps) {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFiles>({})
   const fileInputRefs = useRef<{ [key in keyof UploadedFiles]?: HTMLInputElement | null }>({})
 
@@ -44,14 +45,13 @@ export default function FileUpload({ onFilesUpload, isLoading = false }: FileUpl
     const currentFiles = uploadedFiles[type] || []
     const newFiles = currentFiles.filter((_, i) => i !== index)
 
-    const newUploadedFiles = { ...uploadedFiles, [type]: newFiles.length > 0 ? newFiles : undefined }
+    const newUploadedFiles = { ...uploadedFiles, [type]: newFiles }
     setUploadedFiles(newUploadedFiles)
     onFilesUpload(newUploadedFiles)
   }
 
   const removeAllFiles = (type: keyof UploadedFiles) => {
-    const newUploadedFiles = { ...uploadedFiles }
-    delete newUploadedFiles[type]
+    const newUploadedFiles = { ...uploadedFiles, [type]: [] }
     setUploadedFiles(newUploadedFiles)
     onFilesUpload(newUploadedFiles)
   }
@@ -64,6 +64,8 @@ export default function FileUpload({ onFilesUpload, isLoading = false }: FileUpl
         return <Phone className="h-4 w-4" />
       case "contacts":
         return <Users className="h-4 w-4" />
+      case "bank":
+        return <Wallet className="h-4 w-4" />
       default:
         return <FileText className="h-4 w-4" />
     }
@@ -77,6 +79,8 @@ export default function FileUpload({ onFilesUpload, isLoading = false }: FileUpl
         return "Call Logs"
       case "contacts":
         return "Contact List"
+      case "bank":
+        return "Bank Records"
       default:
         return type
     }
@@ -86,7 +90,8 @@ export default function FileUpload({ onFilesUpload, isLoading = false }: FileUpl
     fileInputRefs.current[type] = el
   }
 
-  const fileTypes: (keyof UploadedFiles)[] = ["sms", "calls", "contacts"]
+  const allFileTypes: (keyof UploadedFiles)[] = ["sms", "calls", "contacts", "bank"]
+  const fileTypes = allowedTypes || allFileTypes
 
   const getTotalFileCount = () => {
     return Object.values(uploadedFiles).reduce((total, files) => total + (files?.length || 0), 0)

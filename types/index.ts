@@ -18,17 +18,30 @@ export interface CallLog {
 export interface Contact {
   "Contact Name": string
   "Phone Number": string
-  "Additional Info"?: string
+  "Full Name"?: string
 }
 
 export interface UploadedFiles {
   sms?: File[]
   calls?: File[]
   contacts?: File[]
+  bank?: File[]
 }
 
 export interface ParsedData {
   sms: SMS[]
   calls: CallLog[]
   contacts: Contact[]
+  bank: BankRecord[]
+}
+
+export interface BankRecord {
+  id: string
+  from: string
+  routing: string
+  reason: string
+  amount: number
+  balance: number
+  date: string
+  rawDate: string
 }
