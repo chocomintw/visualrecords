@@ -10,6 +10,7 @@ export interface SMS {
 export interface CallLog {
   "Call #": string
   "Sender Number": string
+  "Call Info": string
   "Receiver Number": string
   Type: "Sender" | "Receiver"
   Timestamp: string

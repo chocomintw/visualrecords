@@ -18,9 +18,31 @@ import {
   ResponsiveContainer,
 } from "recharts"
 import { useAppStore } from "@/lib/store"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Badge } from "@/components/ui/badge"
+import { Phone, MessageSquare, User, UserX } from "lucide-react"
+import { useState, useMemo } from "react"
+
+interface CallConversation {
+  contactName: string
+  calls: Array<{
+    "Call #"?: string
+    "Sender Number": string
+    "Receiver Number": string
+    "Call Info": string
+    Type: "Sender" | "Receiver"
+    Timestamp: string
+    isOutgoing: boolean
+  }>
+  callCount: number
+  lastActivity: string
+}
 
 export default function DataVisualization() {
   const communicationStats = useAppStore((state) => state.communicationStats)
+  const { parsedData } = useAppStore()
+  const { calls, contacts, sms } = parsedData
+  const [selectedCallContact, setSelectedCallContact] = useState<string | null>(null)
 
   if (!communicationStats) {
     return null
@@ -39,8 +61,123 @@ export default function DataVisualization() {
     unknownNumbersByDay
   } = communicationStats
 
+  // Get the main phone number from parsed data
+  const mainPhoneNumber = useMemo(() => {
+    return getMainPhoneNumber(calls, sms)
+  }, [calls, sms])
+
+  // Process call conversations with proper direction guessing
+  const callConversations = useMemo(() => {
+    const contactMap = createContactMap(contacts)
+    const conversationMap: { [key: string]: CallConversation } = {}
+
+    // Process calls into conversations with proper direction
+    calls.forEach((call: any) => {
+      const { contactNumber, isOutgoing } = determineCallDirection(call, mainPhoneNumber)
+      const contactName = contactMap[contactNumber] || `Unknown (${contactNumber})`
+
+      if (!conversationMap[contactName]) {
+        conversationMap[contactName] = {
+          contactName,
+          calls: [],
+          callCount: 0,
+          lastActivity: ""
+        }
+      }
+
+      conversationMap[contactName].calls.push({
+        ...call,
+        isOutgoing
+      })
+      conversationMap[contactName].callCount++
+      
+      // Update last activity
+      const callDate = new Date(call.Timestamp)
+      const currentLastActivity = new Date(conversationMap[contactName].lastActivity || 0)
+      if (callDate > currentLastActivity) {
+        conversationMap[contactName].lastActivity = call.Timestamp
+      }
+    })
+
+    // Sort conversations by most recent activity and sort calls chronologically
+    return Object.values(conversationMap)
+      .map(conversation => ({
+        ...conversation,
+        calls: conversation.calls.sort((a, b) => 
+          new Date(a.Timestamp).getTime() - new Date(b.Timestamp).getTime()
+        )
+      }))
+      .sort((a, b) => new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime())
+  }, [calls, contacts, mainPhoneNumber])
+
+  const selectedCallConversation = selectedCallContact
+    ? callConversations.find((c) => c.contactName === selectedCallContact)
+    : callConversations[0]
+
+  // Enhanced stats with direction information
+  const enhancedStats = useMemo(() => {
+    if (!communicationStats) return null
+
+    // Add outgoing/incoming breakdown to calls per day
+    const enhancedCallsPerDay = callsPerDay.map(day => {
+      const dayCalls = calls.filter((call: any) => {
+        const callDate = new Date(call.Timestamp).toDateString()
+        const statDate = new Date(day.date).toDateString()
+        return callDate === statDate
+      })
+
+      const outgoing = dayCalls.filter((call: any) => {
+        const { isOutgoing } = determineCallDirection(call, mainPhoneNumber)
+        return isOutgoing
+      }).length
+
+      const incoming = dayCalls.filter((call: any) => {
+        const { isOutgoing } = determineCallDirection(call, mainPhoneNumber)
+        return !isOutgoing
+      }).length
+
+      return {
+        ...day,
+        outgoing,
+        incoming
+      }
+    })
+
+    // Add direction breakdown to calls per contact
+    const enhancedCallsPerContact = callsPerContact.map(contactStat => {
+      const contactCalls = calls.filter((call: any) => {
+        const { contactNumber } = determineCallDirection(call, mainPhoneNumber)
+        const contactName = createContactMap(contacts)[contactNumber] || `Unknown (${contactNumber})`
+        return contactName === contactStat.name
+      })
+
+      const outgoing = contactCalls.filter((call: any) => {
+        const { isOutgoing } = determineCallDirection(call, mainPhoneNumber)
+        return isOutgoing
+      }).length
+
+      const incoming = contactCalls.filter((call: any) => {
+        const { isOutgoing } = determineCallDirection(call, mainPhoneNumber)
+        return !isOutgoing
+      }).length
+
+      return {
+        ...contactStat,
+        outgoing,
+        incoming
+      }
+    })
+
+    return {
+      ...communicationStats,
+      enhancedCallsPerDay,
+      enhancedCallsPerContact
+    }
+  }, [communicationStats, calls, contacts, mainPhoneNumber, callsPerDay, callsPerContact])
+
   const COLORS = ["#3b82f6", "#10b981", "#8b5cf6", "#f59e0b", "#ef4444", "#06b6d4", "#84cc16", "#f97316"]
   const UNKNOWN_COLORS = ["#ef4444", "#f97316", "#f59e0b", "#eab308", "#84cc16", "#06b6d4", "#8b5cf6", "#a855f7"]
+  const DIRECTION_COLORS = ["#10b981", "#3b82f6"] // Outgoing, Incoming
 
   const tooltipStyle = {
     contentStyle: {
@@ -55,8 +192,18 @@ export default function DataVisualization() {
 
   return (
     <div className="space-y-6">
+      {/* Owner Phone Number Badge */}
+      {mainPhoneNumber && (
+        <div className="flex justify-center">
+          <Badge variant="outline" className="px-4 py-2 text-sm">
+            <Phone className="h-4 w-4 mr-2" />
+            Owner: {mainPhoneNumber}
+          </Badge>
+        </div>
+      )}
+
       <Tabs defaultValue="daily" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 max-w-2xl mx-auto p-0 bg-muted rounded-lg">
+        <TabsList className="grid w-full grid-cols-4 max-w-3xl mx-auto p-0 bg-muted rounded-lg">
           <TabsTrigger value="daily" className="py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
             Daily Activity
           </TabsTrigger>
@@ -69,20 +216,23 @@ export default function DataVisualization() {
           <TabsTrigger value="unknown" className="py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
             Unknown Numbers
           </TabsTrigger>
+          <TabsTrigger value="call-conversations" className="py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            Call Conversations
+          </TabsTrigger>
         </TabsList>
 
         {/* Daily Activity Tab */}
         <TabsContent value="daily" className="space-y-6">
           <div className="grid grid-cols-1 gap-6">
-            {/* Calls Per Day */}
+            {/* Enhanced Calls Per Day with Direction */}
             <Card>
               <CardHeader>
                 <CardTitle>Calls Per Day</CardTitle>
-                <CardDescription>Daily call volume over time</CardDescription>
+                <CardDescription>Daily call volume with outgoing/incoming breakdown</CardDescription>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={callsPerDay}>
+                  <BarChart data={enhancedStats?.enhancedCallsPerDay || callsPerDay}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis
                       dataKey="date"
@@ -104,7 +254,15 @@ export default function DataVisualization() {
                         })
                       }}
                     />
-                    <Bar dataKey="count" fill="#10b981" name="Calls" isAnimationActive={false} />
+                    <Legend />
+                    {enhancedStats?.enhancedCallsPerDay ? (
+                      <>
+                        <Bar dataKey="outgoing" fill="#10b981" name="Outgoing Calls" isAnimationActive={false} />
+                        <Bar dataKey="incoming" fill="#3b82f6" name="Incoming Calls" isAnimationActive={false} />
+                      </>
+                    ) : (
+                      <Bar dataKey="count" fill="#10b981" name="Calls" isAnimationActive={false} />
+                    )}
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -182,33 +340,38 @@ export default function DataVisualization() {
               </CardContent>
             </Card>
 
-            {/* Calls Per Contact */}
+            {/* Enhanced Calls Per Contact with Direction */}
             <Card>
               <CardHeader>
                 <CardTitle>Calls Per Contact</CardTitle>
-                <CardDescription>Top contacts by call volume</CardDescription>
+                <CardDescription>Top contacts by call volume with direction</CardDescription>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={callsPerContact}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name} (${((percent ?? 0) * 100).toFixed(0)}%)`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                      isAnimationActive={false}
-                    >
-                      {callsPerContact.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip {...tooltipStyle} formatter={(value) => [`${value} calls`, "Count"]} />
+                  <BarChart 
+                    data={enhancedStats?.enhancedCallsPerContact || callsPerContact} 
+                    layout="vertical"
+                    margin={{ left: 100, right: 20 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis type="number" />
+                    <YAxis 
+                      type="category" 
+                      dataKey="name" 
+                      tick={{ fontSize: 12 }}
+                      width={90}
+                    />
+                    <Tooltip {...tooltipStyle} />
                     <Legend />
-                  </PieChart>
+                    {enhancedStats?.enhancedCallsPerContact ? (
+                      <>
+                        <Bar dataKey="outgoing" fill="#10b981" name="Outgoing" isAnimationActive={false} />
+                        <Bar dataKey="incoming" fill="#3b82f6" name="Incoming" isAnimationActive={false} />
+                      </>
+                    ) : (
+                      <Bar dataKey="value" fill="#10b981" name="Calls" isAnimationActive={false} />
+                    )}
+                  </BarChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
@@ -399,9 +562,212 @@ export default function DataVisualization() {
             </Card>
           </div>
         </TabsContent>
+
+        {/* Call Conversations Tab */}
+        <TabsContent value="call-conversations" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[700px]">
+            {/* Call Conversations List */}
+            <Card className="lg:col-span-1">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-xl">Call Conversations</CardTitle>
+                <CardDescription className="text-base">
+                  {callConversations.length} contacts with calls
+                  {mainPhoneNumber && (
+                    <div className="text-xs mt-1 text-muted-foreground">
+                      Owner: {mainPhoneNumber}
+                    </div>
+                  )}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                <ScrollArea className="h-[580px]">
+                  <div className="space-y-2 p-3">
+                    {callConversations.map((conversation) => {
+                      const outgoingCount = conversation.calls.filter(call => call.isOutgoing).length
+                      const incomingCount = conversation.calls.filter(call => !call.isOutgoing).length
+                      
+                      return (
+                        <div
+                          key={conversation.contactName}
+                          className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                            selectedCallConversation?.contactName === conversation.contactName ? "bg-muted" : "hover:bg-muted/50"
+                          }`}
+                          onClick={() => setSelectedCallContact(conversation.contactName)}
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-2 min-w-0">
+                              {conversation.contactName.startsWith("Unknown") ? (
+                                <UserX className="h-4 w-4 text-orange-500 flex-shrink-0" />
+                              ) : (
+                                <User className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                              )}
+                              <div className="min-w-0 flex-1">
+                                <p className="font-medium text-sm truncate">{conversation.contactName}</p>
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  <span className="text-green-600">↑{outgoingCount}</span>
+                                  <span className="text-blue-600">↓{incomingCount}</span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex flex-col items-end gap-1 flex-shrink-0 ml-2">
+                              <Badge variant="secondary" className="h-5 text-xs">
+                                <Phone className="h-3 w-3 mr-1" />
+                                {conversation.callCount}
+                              </Badge>
+                              <p className="text-xs text-muted-foreground">
+                                {new Date(conversation.lastActivity).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </ScrollArea>
+              </CardContent>
+            </Card>
+
+            {/* Call History */}
+            <Card className="lg:col-span-2">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-xl">
+                  {selectedCallConversation ? selectedCallConversation.contactName : "Select a conversation"}
+                </CardTitle>
+                <CardDescription className="text-base">
+                  {selectedCallConversation && (
+                    <div className="flex items-center gap-4 flex-wrap">
+                      <span>{selectedCallConversation.callCount} calls</span>
+                      <span className="flex items-center gap-1">
+                        <span className="text-green-600">↑{selectedCallConversation.calls.filter(c => c.isOutgoing).length} outgoing</span>
+                        <span className="text-blue-600">↓{selectedCallConversation.calls.filter(c => !c.isOutgoing).length} incoming</span>
+                      </span>
+                      <span>
+                        First: {new Date(selectedCallConversation.calls[0]?.Timestamp).toLocaleDateString()} - 
+                        Last: {new Date(selectedCallConversation.lastActivity).toLocaleDateString()}
+                      </span>
+                    </div>
+                  )}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                <ScrollArea className="h-[640px]">
+                  <div className="space-y-4 p-4 pb-2">
+                    {selectedCallConversation ? (
+                      selectedCallConversation.calls.map((call, index) => (
+                        <div key={index} className={`flex gap-3 ${call.isOutgoing ? "flex-row-reverse" : "flex-row"}`}>
+                          <div
+                            className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                              call.isOutgoing ? "bg-green-500 text-white" : "bg-blue-500 text-white"
+                            }`}
+                          >
+                            <Phone className="h-4 w-4" />
+                          </div>
+                          <div
+                            className={`max-w-[85%] rounded-lg p-3 ${
+                              call.isOutgoing ? "bg-green-500 text-white" : "bg-blue-500 text-white"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 mb-1">
+                              <Badge
+                                variant="secondary"
+                                className={`text-xs ${
+                                  call.isOutgoing ? "bg-green-400 text-white" : "bg-blue-400 text-white"
+                                }`}
+                              >
+                                {call.isOutgoing ? "Outgoing" : "Incoming"}
+                              </Badge>
+                              <span className="text-xs opacity-90">{new Date(call.Timestamp).toLocaleString()}</span>
+                            </div>
+                            <div className="text-sm">
+                              <p className="font-medium mb-1">{call.isOutgoing ? "Outgoing call" : "Incoming call"}</p>
+                              {call["Call Info"] && (
+                                <p className="text-sm opacity-90">{call["Call Info"]}</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center text-muted-foreground py-8">
+                        <Phone className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <p>Select a conversation to view call history</p>
+                      </div>
+                    )}
+                  </div>
+                </ScrollArea>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
       </Tabs>
     </div>
   )
 }
 
+// Enhanced helper functions with phone number guessing
+function createContactMap(contacts: any[]): { [key: string]: string } {
+  const contactMap: { [key: string]: string } = {}
+  contacts.forEach((contact: any) => {
+    contactMap[contact["Phone Number"]] = contact["Contact Name"]
+  })
+  return contactMap
+}
 
+function getMainPhoneNumber(calls: any[], sms: any[]): string {
+  // Try to get from the Type field in calls and SMS first
+  const sentCalls = calls.filter((call: any) => call.Type === "Sender")
+  const sentSMS = sms.filter((message: any) => message.Type === "Sender")
+  
+  if (sentCalls.length > 0 && sentCalls[0]["Sender Number"]) {
+    return sentCalls[0]["Sender Number"]
+  }
+  if (sentSMS.length > 0 && sentSMS[0]["Sender Number"]) {
+    return sentSMS[0]["Sender Number"]
+  }
+  
+  // Fallback: count occurrences of each phone number
+  const phoneCount: { [key: string]: number } = {}
+  
+  const allItems = [...calls, ...sms]
+  allItems.forEach((item: any) => {
+    if (item["Sender Number"] && item["Sender Number"].trim()) {
+      const sender = item["Sender Number"].trim()
+      phoneCount[sender] = (phoneCount[sender] || 0) + 1
+    }
+    if (item["Receiver Number"] && item["Receiver Number"].trim()) {
+      const receiver = item["Receiver Number"].trim()
+      phoneCount[receiver] = (phoneCount[receiver] || 0) + 1
+    }
+  })
+  
+  const sortedPhones = Object.entries(phoneCount).sort(([,a], [,b]) => b - a)
+  return sortedPhones[0]?.[0] || ""
+}
+
+// And update the determineCallDirection function to be more robust:
+
+function determineCallDirection(call: any, mainPhoneNumber: string): { contactNumber: string; isOutgoing: boolean } {
+  const sender = call["Sender Number"]?.trim() || ""
+  const receiver = call["Receiver Number"]?.trim() || ""
+  
+  if (!mainPhoneNumber) {
+    return { contactNumber: receiver || sender, isOutgoing: true }
+  }
+  
+  // Use the Type field if available (from our parsing logic)
+  if (call.Type === "Sender") {
+    return { contactNumber: receiver, isOutgoing: true }
+  } else if (call.Type === "Receiver") {
+    return { contactNumber: sender, isOutgoing: false }
+  }
+  
+  // Fallback to phone number comparison
+  if (sender === mainPhoneNumber) {
+    return { contactNumber: receiver, isOutgoing: true }
+  } else if (receiver === mainPhoneNumber) {
+    return { contactNumber: sender, isOutgoing: false }
+  } else {
+    // Final fallback - assume outgoing if we can't determine
+    return { contactNumber: receiver || sender, isOutgoing: true }
+  }
+}
