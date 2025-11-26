@@ -3,7 +3,7 @@
 import FileUpload from "@/components/file-upload"
 import DataVisualization from "@/components/data-visualization"
 import DataTable from "@/components/data-table"
-import MessageExplorer from "@/components/message-explorer"
+import ConversationExplorer from "@/components/conversation-explorer"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Progress } from "@/components/ui/progress"
@@ -94,7 +94,7 @@ export default function CommunicationDashboard() {
                                 className="flex items-center gap-2 text-sm font-medium rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm"
                             >
                                 <MessageSquare className="h-4 w-4" />
-                                Messages
+                                Conversations
                             </TabsTrigger>
                         </TabsList>
 
@@ -107,7 +107,7 @@ export default function CommunicationDashboard() {
                         </TabsContent>
 
                         <TabsContent value="explorer" className="mt-8">
-                            <MessageExplorer />
+                            <ConversationExplorer />
                         </TabsContent>
                     </Tabs>
                 </div>

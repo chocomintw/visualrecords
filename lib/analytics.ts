@@ -87,18 +87,19 @@ export interface CommunicationStats {
 
 export function processCommunicationData(data: ParsedData): CommunicationStats {
     const { sms, calls, contacts } = data
+    const mainPhoneNumber = getMainPhoneNumber(sms, calls)
 
     return {
         callsPerDay: processCallsPerDay(calls),
         textsPerDay: processTextsPerDay(sms),
-        textsPerContact: processTextsPerContact(sms, contacts),
-        callsPerContact: processCallsPerContact(calls, contacts),
-        topContactsByInteractions: processTopContactsByInteractions(sms, calls, contacts),
-        contactsActivityByDay: processContactsActivityByDay(sms, calls, contacts),
-        textsPerUnknown: processTextsPerUnknown(sms, contacts),
-        callsPerUnknown: processCallsPerUnknown(calls, contacts),
-        topUnknownByInteractions: processTopUnknownByInteractions(sms, calls, contacts),
-        unknownNumbersByDay: processUnknownNumbersByDay(sms, calls, contacts),
+        textsPerContact: processTextsPerContact(sms, contacts, mainPhoneNumber),
+        callsPerContact: processCallsPerContact(calls, contacts, mainPhoneNumber),
+        topContactsByInteractions: processTopContactsByInteractions(sms, calls, contacts, mainPhoneNumber),
+        contactsActivityByDay: processContactsActivityByDay(sms, calls, contacts, mainPhoneNumber),
+        textsPerUnknown: processTextsPerUnknown(sms, contacts, mainPhoneNumber),
+        callsPerUnknown: processCallsPerUnknown(calls, contacts, mainPhoneNumber),
+        topUnknownByInteractions: processTopUnknownByInteractions(sms, calls, contacts, mainPhoneNumber),
+        unknownNumbersByDay: processUnknownNumbersByDay(sms, calls, contacts, mainPhoneNumber),
     }
 }
 
@@ -121,14 +122,46 @@ function truncateNumber(number: string): string {
     return number.substring(0, 8) + "..." + number.substring(number.length - 4)
 }
 
-function processContactsActivityByDay(sms: SMS[], calls: CallLog[], contacts: Contact[]) {
+// Helper to detect the main phone number (user's own number)
+function getMainPhoneNumber(sms: SMS[], calls: CallLog[]): string {
+    // Try to get from the Type field in calls and SMS first
+    const sentCalls = calls.filter((call) => call.Type === "Sender")
+    const sentSMS = sms.filter((message) => message.Type === "Sender")
+
+    if (sentCalls.length > 0 && sentCalls[0]["Sender Number"]) {
+        return sentCalls[0]["Sender Number"]
+    }
+    if (sentSMS.length > 0 && sentSMS[0]["Sender Number"]) {
+        return sentSMS[0]["Sender Number"]
+    }
+
+    // Fallback: count occurrences of each phone number
+    const phoneCount: { [key: string]: number } = {}
+
+    const allItems = [...calls, ...sms]
+    allItems.forEach((item: any) => {
+        if (item["Sender Number"] && item["Sender Number"].trim()) {
+            const sender = item["Sender Number"].trim()
+            phoneCount[sender] = (phoneCount[sender] || 0) + 1
+        }
+        if (item["Receiver Number"] && item["Receiver Number"].trim()) {
+            const receiver = item["Receiver Number"].trim()
+            phoneCount[receiver] = (phoneCount[receiver] || 0) + 1
+        }
+    })
+
+    const sortedPhones = Object.entries(phoneCount).sort(([, a], [, b]) => b - a)
+    return sortedPhones[0]?.[0] || ""
+}
+
+function processContactsActivityByDay(sms: SMS[], calls: CallLog[], contacts: Contact[], mainPhoneNumber: string) {
     const contactMap = createContactMap(contacts)
     const dailyData: { [key: string]: { texts: number; calls: number } } = {}
 
     sms.forEach((message) => {
         const date = message.Timestamp.split(" ")[0]
         const contactNumber = message.Type === "Sender" ? message["Receiver Number"] : message["Sender Number"]
-        if (contactMap[contactNumber]) {
+        if (contactMap[contactNumber] && contactNumber !== mainPhoneNumber) {
             if (!dailyData[date]) dailyData[date] = { texts: 0, calls: 0 }
             dailyData[date].texts++
         }
@@ -137,7 +170,7 @@ function processContactsActivityByDay(sms: SMS[], calls: CallLog[], contacts: Co
     calls.forEach((call) => {
         const date = call.Timestamp.split(" ")[0]
         const contactNumber = call.Type === "Sender" ? call["Receiver Number"] : call["Sender Number"]
-        if (contactMap[contactNumber]) {
+        if (contactMap[contactNumber] && contactNumber !== mainPhoneNumber) {
             if (!dailyData[date]) dailyData[date] = { texts: 0, calls: 0 }
             dailyData[date].calls++
         }
@@ -175,14 +208,14 @@ function processTextsPerDay(sms: SMS[]) {
         .sort((a, b) => a.date.localeCompare(b.date))
 }
 
-function processTextsPerContact(sms: SMS[], contacts: Contact[]) {
+function processTextsPerContact(sms: SMS[], contacts: Contact[], mainPhoneNumber: string) {
     const contactMap = createContactMap(contacts)
     const contactCounts: { [key: string]: number } = {}
 
     sms.forEach((message) => {
         const contactNumber = message.Type === "Sender" ? message["Receiver Number"] : message["Sender Number"]
         const contactName = contactMap[contactNumber]
-        if (contactName) {
+        if (contactName && contactNumber !== mainPhoneNumber) {
             contactCounts[contactName] = (contactCounts[contactName] || 0) + 1
         }
     })
@@ -193,14 +226,14 @@ function processTextsPerContact(sms: SMS[], contacts: Contact[]) {
         .slice(0, 8)
 }
 
-function processCallsPerContact(calls: CallLog[], contacts: Contact[]) {
+function processCallsPerContact(calls: CallLog[], contacts: Contact[], mainPhoneNumber: string) {
     const contactMap = createContactMap(contacts)
     const contactCounts: { [key: string]: number } = {}
 
     calls.forEach((call) => {
         const contactNumber = call.Type === "Sender" ? call["Receiver Number"] : call["Sender Number"]
         const contactName = contactMap[contactNumber]
-        if (contactName) {
+        if (contactName && contactNumber !== mainPhoneNumber) {
             contactCounts[contactName] = (contactCounts[contactName] || 0) + 1
         }
     })
@@ -211,14 +244,14 @@ function processCallsPerContact(calls: CallLog[], contacts: Contact[]) {
         .slice(0, 8)
 }
 
-function processTopContactsByInteractions(sms: SMS[], calls: CallLog[], contacts: Contact[]) {
+function processTopContactsByInteractions(sms: SMS[], calls: CallLog[], contacts: Contact[], mainPhoneNumber: string) {
     const contactMap = createContactMap(contacts)
     const interactionCounts: { [key: string]: { texts: number; calls: number } } = {}
 
     sms.forEach((message) => {
         const contactNumber = message.Type === "Sender" ? message["Receiver Number"] : message["Sender Number"]
         const contactName = contactMap[contactNumber]
-        if (contactName) {
+        if (contactName && contactNumber !== mainPhoneNumber) {
             if (!interactionCounts[contactName]) interactionCounts[contactName] = { texts: 0, calls: 0 }
             interactionCounts[contactName].texts++
         }
@@ -227,7 +260,7 @@ function processTopContactsByInteractions(sms: SMS[], calls: CallLog[], contacts
     calls.forEach((call) => {
         const contactNumber = call.Type === "Sender" ? call["Receiver Number"] : call["Sender Number"]
         const contactName = contactMap[contactNumber]
-        if (contactName) {
+        if (contactName && contactNumber !== mainPhoneNumber) {
             if (!interactionCounts[contactName]) interactionCounts[contactName] = { texts: 0, calls: 0 }
             interactionCounts[contactName].calls++
         }
@@ -244,13 +277,13 @@ function processTopContactsByInteractions(sms: SMS[], calls: CallLog[], contacts
         .slice(0, 10)
 }
 
-function processTextsPerUnknown(sms: SMS[], contacts: Contact[]) {
+function processTextsPerUnknown(sms: SMS[], contacts: Contact[], mainPhoneNumber: string) {
     const contactMap = createContactMap(contacts)
     const unknownCounts: { [key: string]: number } = {}
 
     sms.forEach((message) => {
         const contactNumber = message.Type === "Sender" ? message["Receiver Number"] : message["Sender Number"]
-        if (!contactMap[contactNumber]) {
+        if (!contactMap[contactNumber] && contactNumber !== mainPhoneNumber) {
             unknownCounts[contactNumber] = (unknownCounts[contactNumber] || 0) + 1
         }
     })
@@ -261,13 +294,13 @@ function processTextsPerUnknown(sms: SMS[], contacts: Contact[]) {
         .slice(0, 8)
 }
 
-function processCallsPerUnknown(calls: CallLog[], contacts: Contact[]) {
+function processCallsPerUnknown(calls: CallLog[], contacts: Contact[], mainPhoneNumber: string) {
     const contactMap = createContactMap(contacts)
     const unknownCounts: { [key: string]: number } = {}
 
     calls.forEach((call) => {
         const contactNumber = call.Type === "Sender" ? call["Receiver Number"] : call["Sender Number"]
-        if (!contactMap[contactNumber]) {
+        if (!contactMap[contactNumber] && contactNumber !== mainPhoneNumber) {
             unknownCounts[contactNumber] = (unknownCounts[contactNumber] || 0) + 1
         }
     })
@@ -278,13 +311,13 @@ function processCallsPerUnknown(calls: CallLog[], contacts: Contact[]) {
         .slice(0, 8)
 }
 
-function processTopUnknownByInteractions(sms: SMS[], calls: CallLog[], contacts: Contact[]) {
+function processTopUnknownByInteractions(sms: SMS[], calls: CallLog[], contacts: Contact[], mainPhoneNumber: string) {
     const contactMap = createContactMap(contacts)
     const interactionCounts: { [key: string]: { texts: number; calls: number } } = {}
 
     sms.forEach((message) => {
         const contactNumber = message.Type === "Sender" ? message["Receiver Number"] : message["Sender Number"]
-        if (!contactMap[contactNumber]) {
+        if (!contactMap[contactNumber] && contactNumber !== mainPhoneNumber) {
             if (!interactionCounts[contactNumber]) interactionCounts[contactNumber] = { texts: 0, calls: 0 }
             interactionCounts[contactNumber].texts++
         }
@@ -292,7 +325,7 @@ function processTopUnknownByInteractions(sms: SMS[], calls: CallLog[], contacts:
 
     calls.forEach((call) => {
         const contactNumber = call.Type === "Sender" ? call["Receiver Number"] : call["Sender Number"]
-        if (!contactMap[contactNumber]) {
+        if (!contactMap[contactNumber] && contactNumber !== mainPhoneNumber) {
             if (!interactionCounts[contactNumber]) interactionCounts[contactNumber] = { texts: 0, calls: 0 }
             interactionCounts[contactNumber].calls++
         }
@@ -309,14 +342,14 @@ function processTopUnknownByInteractions(sms: SMS[], calls: CallLog[], contacts:
         .slice(0, 10)
 }
 
-function processUnknownNumbersByDay(sms: SMS[], calls: CallLog[], contacts: Contact[]) {
+function processUnknownNumbersByDay(sms: SMS[], calls: CallLog[], contacts: Contact[], mainPhoneNumber: string) {
     const contactMap = createContactMap(contacts)
     const dailyData: { [key: string]: { texts: number; calls: number } } = {}
 
     sms.forEach((message) => {
         const date = message.Timestamp.split(" ")[0]
         const contactNumber = message.Type === "Sender" ? message["Receiver Number"] : message["Sender Number"]
-        if (!contactMap[contactNumber]) {
+        if (!contactMap[contactNumber] && contactNumber !== mainPhoneNumber) {
             if (!dailyData[date]) dailyData[date] = { texts: 0, calls: 0 }
             dailyData[date].texts++
         }
@@ -325,7 +358,7 @@ function processUnknownNumbersByDay(sms: SMS[], calls: CallLog[], contacts: Cont
     calls.forEach((call) => {
         const date = call.Timestamp.split(" ")[0]
         const contactNumber = call.Type === "Sender" ? call["Receiver Number"] : call["Sender Number"]
-        if (!contactMap[contactNumber]) {
+        if (!contactMap[contactNumber] && contactNumber !== mainPhoneNumber) {
             if (!dailyData[date]) dailyData[date] = { texts: 0, calls: 0 }
             dailyData[date].calls++
         }

@@ -9,23 +9,38 @@ export function cn(...inputs: ClassValue[]) {
 
 // Helper function to create a unique ID for deduplication
 function createMessageId(item: any): string {
-  const sender = String(item["Sender Number"] || "")
-  const receiver = String(item["Receiver Number"] || "")
-  const message = String(item["Message Body"] || item["Call Info"] || "")
-  const timestamp = String(item["Timestamp"] || "")
-  
-  // Create a unique identifier based on content and timestamp
-  return `${sender}-${receiver}-${message}-${timestamp}`.toLowerCase().replace(/\s+/g, '')
+  // Normalize phone numbers: remove non-digits to handle formatting differences (e.g. "+1 555" vs "1555")
+  const sender = String(item["Sender Number"] || "").replace(/\D/g, "")
+  const receiver = String(item["Receiver Number"] || "").replace(/\D/g, "")
+
+  // Normalize message: lowercase and remove all whitespace for aggressive deduplication
+  const message = String(item["Message Body"] || item["Call Info"] || "").toLowerCase().replace(/\s+/g, "")
+
+  // Normalize timestamp: try to parse as date to handle different formats (e.g. "12/31/2023" vs "2023-12-31")
+  let timestamp = String(item["Timestamp"] || "").trim()
+  try {
+    const date = new Date(timestamp)
+    if (!isNaN(date.getTime())) {
+      timestamp = date.toISOString()
+    } else {
+      timestamp = timestamp.toLowerCase()
+    }
+  } catch (e) {
+    timestamp = timestamp.toLowerCase()
+  }
+
+  // Use pipe separator to avoid collisions
+  return `${sender}|${receiver}|${message}|${timestamp}`
 }
 
 // Helper function to deduplicate array of items
 function deduplicateItems<T>(items: T[], idField?: keyof T): T[] {
   const seen = new Set<string>()
   const deduped: T[] = []
-  
+
   for (const item of items) {
     let id: string
-    
+
     if (idField) {
       // Use specified field for ID
       id = String((item as any)[idField] || "")
@@ -33,7 +48,7 @@ function deduplicateItems<T>(items: T[], idField?: keyof T): T[] {
       // Create ID from content
       id = createMessageId(item as any)
     }
-    
+
     if (!seen.has(id)) {
       seen.add(id)
       deduped.push(item)
@@ -41,7 +56,7 @@ function deduplicateItems<T>(items: T[], idField?: keyof T): T[] {
       console.log(`Skipping duplicate item: ${id}`)
     }
   }
-  
+
   console.log(`Deduplication: ${items.length} -> ${deduped.length} items`)
   return deduped
 }
@@ -73,7 +88,7 @@ export async function parseFile(file: File): Promise<any[]> {
           }
 
           // For phone export files, we need special handling
-          const isPhoneExport = lines.some(line => 
+          const isPhoneExport = lines.some(line =>
             line.includes("Phone Number:") || line.includes("=== MESSAGES ===") || line.includes("=== CALLS ===")
           )
 
@@ -147,23 +162,23 @@ export async function parseFile(file: File): Promise<any[]> {
           const workbook = XLSX.read(data, { type: "binary" })
           const firstSheetName = workbook.SheetNames[0]
           const worksheet = workbook.Sheets[firstSheetName]
-          
+
           // Convert to array of arrays first to handle phone export format
           const jsonArray = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][]
-          
+
           let jsonData: any[] = []
-          
+
           // Check if this is a phone export file (has metadata at top)
-          const isPhoneExport = jsonArray.some(row => 
+          const isPhoneExport = jsonArray.some(row =>
             row && row[0] && String(row[0]).includes("Phone Number:")
           )
-          
+
           if (isPhoneExport) {
             console.log(`Detected phone export format in ${file.name}`)
             // Find the header row for messages and calls
             let messagesHeaderIndex = -1
             let callsHeaderIndex = -1
-            
+
             for (let i = 0; i < jsonArray.length; i++) {
               const row = jsonArray[i]
               if (row && row[0] === "MESSAGES") {
@@ -173,7 +188,7 @@ export async function parseFile(file: File): Promise<any[]> {
                 break
               }
             }
-            
+
             // Parse messages
             if (messagesHeaderIndex !== -1 && jsonArray[messagesHeaderIndex]) {
               const messagesHeaders = jsonArray[messagesHeaderIndex].map(h => String(h || "").trim())
@@ -193,7 +208,7 @@ export async function parseFile(file: File): Promise<any[]> {
                 }
               }
             }
-            
+
             // Parse calls
             if (callsHeaderIndex !== -1 && jsonArray[callsHeaderIndex]) {
               const callsHeaders = jsonArray[callsHeaderIndex].map(h => String(h || "").trim())
@@ -315,7 +330,7 @@ function parsePhoneExportCSV(lines: string[]): any[] {
 
         // Determine type based on owner phone number
         let type: "Sender" | "Receiver" = "Sender" // Default to Sender
-        
+
         if (ownerPhoneNumber) {
           if (senderNumber === ownerPhoneNumber) {
             type = "Sender"
@@ -326,7 +341,7 @@ function parsePhoneExportCSV(lines: string[]): any[] {
             const cleanOwner = ownerPhoneNumber.replace(/\D/g, "")
             const cleanSender = senderNumber.replace(/\D/g, "")
             const cleanReceiver = receiverNumber.replace(/\D/g, "")
-            
+
             if (cleanSender === cleanOwner) {
               type = "Sender"
             } else if (cleanReceiver === cleanOwner) {
@@ -355,7 +370,7 @@ function parsePhoneExportCSV(lines: string[]): any[] {
 
         // Only add if we have valid data
         if (senderNumber && receiverNumber && timestamp &&
-            senderNumber !== "Sender Number" && receiverNumber !== "Target Number") {
+          senderNumber !== "Sender Number" && receiverNumber !== "Target Number") {
           result.push(obj)
         }
       }
@@ -368,7 +383,7 @@ function parsePhoneExportCSV(lines: string[]): any[] {
     const receivedCount = result.filter(r => r.Type === "Receiver").length
     console.log(`Message types - Sent: ${sentCount}, Received: ${receivedCount}`)
   }
-  
+
   return result
 }
 
@@ -412,12 +427,12 @@ export function validateSMSData(data: any[]): SMS[] {
 
     // Validate required fields have actual data (not empty or header values)
     if (sender && receiver && message && timestamp &&
-        sender !== "Sender Number" && receiver !== "Receiver Number" && receiver !== "Target Number" &&
-        message !== "Message Body" && message !== "Message" && timestamp !== "Timestamp") {
-      
+      sender !== "Sender Number" && receiver !== "Receiver Number" && receiver !== "Target Number" &&
+      message !== "Message Body" && message !== "Message" && timestamp !== "Timestamp") {
+
       // Determine type - use existing Type if available, otherwise default to "Sender"
       let messageType: "Sender" | "Receiver" = item.Type || "Sender"
-      
+
       // If Type is not set, try to determine from context
       if (!item.Type) {
         messageType = "Sender" // Default fallback
@@ -484,12 +499,12 @@ export function validateCallData(data: any[]): CallLog[] {
 
     // Validate required fields have actual data (not empty or header values)
     if (sender && receiver && timestamp &&
-        sender !== "Sender Number" && receiver !== "Receiver Number" && receiver !== "Target Number" &&
-        timestamp !== "Timestamp") {
-      
+      sender !== "Sender Number" && receiver !== "Receiver Number" && receiver !== "Target Number" &&
+      timestamp !== "Timestamp") {
+
       // Determine type - use existing Type if available, otherwise default to "Sender"
       let callType: "Sender" | "Receiver" = item.Type || "Sender"
-      
+
       // If Type is not set, try to determine from context
       if (!item.Type) {
         callType = "Sender" // Default fallback

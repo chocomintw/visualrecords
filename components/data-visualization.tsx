@@ -90,7 +90,7 @@ export default function DataVisualization() {
         isOutgoing
       })
       conversationMap[contactName].callCount++
-      
+
       // Update last activity
       const callDate = new Date(call.Timestamp)
       const currentLastActivity = new Date(conversationMap[contactName].lastActivity || 0)
@@ -103,7 +103,7 @@ export default function DataVisualization() {
     return Object.values(conversationMap)
       .map(conversation => ({
         ...conversation,
-        calls: conversation.calls.sort((a, b) => 
+        calls: conversation.calls.sort((a, b) =>
           new Date(a.Timestamp).getTime() - new Date(b.Timestamp).getTime()
         )
       }))
@@ -203,7 +203,7 @@ export default function DataVisualization() {
       )}
 
       <Tabs defaultValue="daily" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4 max-w-3xl mx-auto p-0 bg-muted rounded-lg">
+        <TabsList className="grid w-full grid-cols-3 max-w-3xl mx-auto p-0 bg-muted rounded-lg">
           <TabsTrigger value="daily" className="py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
             Daily Activity
           </TabsTrigger>
@@ -215,9 +215,6 @@ export default function DataVisualization() {
           </TabsTrigger>
           <TabsTrigger value="unknown" className="py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
             Unknown Numbers
-          </TabsTrigger>
-          <TabsTrigger value="call-conversations" className="py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-            Call Conversations
           </TabsTrigger>
         </TabsList>
 
@@ -348,16 +345,16 @@ export default function DataVisualization() {
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart 
-                    data={enhancedStats?.enhancedCallsPerContact || callsPerContact} 
+                  <BarChart
+                    data={enhancedStats?.enhancedCallsPerContact || callsPerContact}
                     layout="vertical"
                     margin={{ left: 100, right: 20 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis type="number" />
-                    <YAxis 
-                      type="category" 
-                      dataKey="name" 
+                    <YAxis
+                      type="category"
+                      dataKey="name"
                       tick={{ fontSize: 12 }}
                       width={90}
                     />
@@ -563,142 +560,7 @@ export default function DataVisualization() {
           </div>
         </TabsContent>
 
-        {/* Call Conversations Tab */}
-        <TabsContent value="call-conversations" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[700px]">
-            {/* Call Conversations List */}
-            <Card className="lg:col-span-1">
-              <CardHeader className="pb-4">
-                <CardTitle className="text-xl">Call Conversations</CardTitle>
-                <CardDescription className="text-base">
-                  {callConversations.length} contacts with calls
-                  {mainPhoneNumber && (
-                    <div className="text-xs mt-1 text-muted-foreground">
-                      Owner: {mainPhoneNumber}
-                    </div>
-                  )}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-0">
-                <ScrollArea className="h-[580px]">
-                  <div className="space-y-2 p-3">
-                    {callConversations.map((conversation) => {
-                      const outgoingCount = conversation.calls.filter(call => call.isOutgoing).length
-                      const incomingCount = conversation.calls.filter(call => !call.isOutgoing).length
-                      
-                      return (
-                        <div
-                          key={conversation.contactName}
-                          className={`p-3 rounded-lg cursor-pointer transition-colors ${
-                            selectedCallConversation?.contactName === conversation.contactName ? "bg-muted" : "hover:bg-muted/50"
-                          }`}
-                          onClick={() => setSelectedCallContact(conversation.contactName)}
-                        >
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-center gap-2 min-w-0">
-                              {conversation.contactName.startsWith("Unknown") ? (
-                                <UserX className="h-4 w-4 text-orange-500 flex-shrink-0" />
-                              ) : (
-                                <User className="h-4 w-4 text-blue-500 flex-shrink-0" />
-                              )}
-                              <div className="min-w-0 flex-1">
-                                <p className="font-medium text-sm truncate">{conversation.contactName}</p>
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                  <span className="text-green-600">↑{outgoingCount}</span>
-                                  <span className="text-blue-600">↓{incomingCount}</span>
-                                </div>
-                              </div>
-                            </div>
-                            <div className="flex flex-col items-end gap-1 flex-shrink-0 ml-2">
-                              <Badge variant="secondary" className="h-5 text-xs">
-                                <Phone className="h-3 w-3 mr-1" />
-                                {conversation.callCount}
-                              </Badge>
-                              <p className="text-xs text-muted-foreground">
-                                {new Date(conversation.lastActivity).toLocaleDateString()}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
 
-            {/* Call History */}
-            <Card className="lg:col-span-2">
-              <CardHeader className="pb-4">
-                <CardTitle className="text-xl">
-                  {selectedCallConversation ? selectedCallConversation.contactName : "Select a conversation"}
-                </CardTitle>
-                <CardDescription className="text-base">
-                  {selectedCallConversation && (
-                    <div className="flex items-center gap-4 flex-wrap">
-                      <span>{selectedCallConversation.callCount} calls</span>
-                      <span className="flex items-center gap-1">
-                        <span className="text-green-600">↑{selectedCallConversation.calls.filter(c => c.isOutgoing).length} outgoing</span>
-                        <span className="text-blue-600">↓{selectedCallConversation.calls.filter(c => !c.isOutgoing).length} incoming</span>
-                      </span>
-                      <span>
-                        First: {new Date(selectedCallConversation.calls[0]?.Timestamp).toLocaleDateString()} - 
-                        Last: {new Date(selectedCallConversation.lastActivity).toLocaleDateString()}
-                      </span>
-                    </div>
-                  )}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-0">
-                <ScrollArea className="h-[640px]">
-                  <div className="space-y-4 p-4 pb-2">
-                    {selectedCallConversation ? (
-                      selectedCallConversation.calls.map((call, index) => (
-                        <div key={index} className={`flex gap-3 ${call.isOutgoing ? "flex-row-reverse" : "flex-row"}`}>
-                          <div
-                            className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                              call.isOutgoing ? "bg-green-500 text-white" : "bg-blue-500 text-white"
-                            }`}
-                          >
-                            <Phone className="h-4 w-4" />
-                          </div>
-                          <div
-                            className={`max-w-[85%] rounded-lg p-3 ${
-                              call.isOutgoing ? "bg-green-500 text-white" : "bg-blue-500 text-white"
-                            }`}
-                          >
-                            <div className="flex items-center gap-2 mb-1">
-                              <Badge
-                                variant="secondary"
-                                className={`text-xs ${
-                                  call.isOutgoing ? "bg-green-400 text-white" : "bg-blue-400 text-white"
-                                }`}
-                              >
-                                {call.isOutgoing ? "Outgoing" : "Incoming"}
-                              </Badge>
-                              <span className="text-xs opacity-90">{new Date(call.Timestamp).toLocaleString()}</span>
-                            </div>
-                            <div className="text-sm">
-                              <p className="font-medium mb-1">{call.isOutgoing ? "Outgoing call" : "Incoming call"}</p>
-                              {call["Call Info"] && (
-                                <p className="text-sm opacity-90">{call["Call Info"]}</p>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="text-center text-muted-foreground py-8">
-                        <Phone className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                        <p>Select a conversation to view call history</p>
-                      </div>
-                    )}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
       </Tabs>
     </div>
   )
@@ -717,17 +579,17 @@ function getMainPhoneNumber(calls: any[], sms: any[]): string {
   // Try to get from the Type field in calls and SMS first
   const sentCalls = calls.filter((call: any) => call.Type === "Sender")
   const sentSMS = sms.filter((message: any) => message.Type === "Sender")
-  
+
   if (sentCalls.length > 0 && sentCalls[0]["Sender Number"]) {
     return sentCalls[0]["Sender Number"]
   }
   if (sentSMS.length > 0 && sentSMS[0]["Sender Number"]) {
     return sentSMS[0]["Sender Number"]
   }
-  
+
   // Fallback: count occurrences of each phone number
   const phoneCount: { [key: string]: number } = {}
-  
+
   const allItems = [...calls, ...sms]
   allItems.forEach((item: any) => {
     if (item["Sender Number"] && item["Sender Number"].trim()) {
@@ -739,8 +601,8 @@ function getMainPhoneNumber(calls: any[], sms: any[]): string {
       phoneCount[receiver] = (phoneCount[receiver] || 0) + 1
     }
   })
-  
-  const sortedPhones = Object.entries(phoneCount).sort(([,a], [,b]) => b - a)
+
+  const sortedPhones = Object.entries(phoneCount).sort(([, a], [, b]) => b - a)
   return sortedPhones[0]?.[0] || ""
 }
 
@@ -749,18 +611,18 @@ function getMainPhoneNumber(calls: any[], sms: any[]): string {
 function determineCallDirection(call: any, mainPhoneNumber: string): { contactNumber: string; isOutgoing: boolean } {
   const sender = call["Sender Number"]?.trim() || ""
   const receiver = call["Receiver Number"]?.trim() || ""
-  
+
   if (!mainPhoneNumber) {
     return { contactNumber: receiver || sender, isOutgoing: true }
   }
-  
+
   // Use the Type field if available (from our parsing logic)
   if (call.Type === "Sender") {
     return { contactNumber: receiver, isOutgoing: true }
   } else if (call.Type === "Receiver") {
     return { contactNumber: sender, isOutgoing: false }
   }
-  
+
   // Fallback to phone number comparison
   if (sender === mainPhoneNumber) {
     return { contactNumber: receiver, isOutgoing: true }
