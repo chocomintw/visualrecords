@@ -308,7 +308,7 @@ export default function ContactEditor() {
                                                 id="text-input"
                                                 value={textInput}
                                                 onChange={(e) => setTextInput(e.target.value)}
-                                                placeholder="[23:28:25] Jesus (75262832) - Offline&#10;[23:30:15] Maria (88123456) - Online"
+                                                placeholder="[00:00:25] Contact (12345678) - Offline"
                                                 className="min-h-[200px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 font-mono"
                                             />
                                             <p className="text-sm text-muted-foreground">
