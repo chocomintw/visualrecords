@@ -1,7 +1,7 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 import * as XLSX from "xlsx"
-import type { SMS, CallLog, Contact } from "@/types"
+import type { SMS, CallLog, Contact, ParsedData, BankRecord } from "@/types"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -259,6 +259,31 @@ export async function parseFile(file: File): Promise<any[]> {
       reader.readAsBinaryString(file)
     }
   })
+}
+
+export function downloadSession(data: ParsedData, filename: string) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement("a")
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+}
+
+export function validateSession(data: any): ParsedData {
+  if (!data || typeof data !== "object") {
+    throw new Error("Invalid session data: not an object")
+  }
+
+  // Basic structure validation
+  if (!Array.isArray(data.sms) || !Array.isArray(data.calls) || !Array.isArray(data.contacts) || !Array.isArray(data.bank)) {
+    throw new Error("Invalid session data: missing required arrays")
+  }
+
+  return data as ParsedData
 }
 
 // New function to parse phone export CSV files

@@ -18,6 +18,7 @@ interface AppState {
   setError: (error: string) => void
   resetState: () => void
   handleFilesUpload: (files: UploadedFiles) => Promise<void>
+  loadSession: (data: ParsedData) => void
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -32,7 +33,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   setParsedData: (data) => {
     set({
       parsedData: data,
-      bankStats: processBankData(data.bank),
+      bankStats: data.bank.length > 0 ? processBankData(data.bank) : null,
       communicationStats: processCommunicationData(data)
     })
   },
@@ -176,7 +177,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
 
       // Process stats immediately
-      const bankStats = processBankData(newData.bank)
+      const bankStats = newData.bank.length > 0 ? processBankData(newData.bank) : null
       const communicationStats = processCommunicationData(newData)
 
       set({
@@ -190,6 +191,27 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ error: errorMsg, parsedData: { sms: [], calls: [], contacts: [], bank: [] }, bankStats: null, communicationStats: null })
     } finally {
       set({ isLoading: false })
+    }
+  },
+
+  loadSession: (data: ParsedData) => {
+    try {
+      set({ isLoading: true, error: "" })
+
+      // Process stats immediately
+      const bankStats = data.bank.length > 0 ? processBankData(data.bank) : null
+      const communicationStats = processCommunicationData(data)
+
+      set({
+        parsedData: data,
+        bankStats,
+        communicationStats,
+        isLoading: false
+      })
+    } catch (err) {
+      const errorMsg = `Error loading session: ${err instanceof Error ? err.message : "Unknown error"}`
+      console.error("Error loading session:", err)
+      set({ error: errorMsg, isLoading: false })
     }
   },
 }))

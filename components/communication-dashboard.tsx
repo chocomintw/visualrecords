@@ -4,6 +4,7 @@ import FileUpload from "@/components/file-upload"
 import DataVisualization from "@/components/data-visualization"
 import DataTable from "@/components/data-table"
 import ConversationExplorer from "@/components/conversation-explorer"
+import { SessionManager } from "@/components/session-manager"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Progress } from "@/components/ui/progress"
@@ -28,6 +29,10 @@ export default function CommunicationDashboard() {
 
     return (
         <div className="space-y-10">
+            <div className="flex justify-end">
+                <SessionManager />
+            </div>
+
             {/* File Upload Section */}
             <FileUpload onFilesUpload={handleFilesUpload} isLoading={isLoading} allowedTypes={["sms", "calls", "contacts"]} />
 

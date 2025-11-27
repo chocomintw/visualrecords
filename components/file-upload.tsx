@@ -6,11 +6,12 @@ import { useState, useCallback, useRef } from "react"
 import type { UploadedFiles } from "@/types"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Upload, FileText, Phone, Users, X, Plus, Info, Wallet } from "lucide-react"
+import { Upload, FileText, Phone, Users, X, Info, Wallet } from "lucide-react"
+import { FileDropZone } from "@/components/file-drop-zone"
 
 interface FileUploadProps {
   onFilesUpload: (files: UploadedFiles) => void
@@ -20,11 +21,10 @@ interface FileUploadProps {
 
 export default function FileUpload({ onFilesUpload, isLoading = false, allowedTypes }: FileUploadProps) {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFiles>({})
-  const fileInputRefs = useRef<{ [key in keyof UploadedFiles]?: HTMLInputElement | null }>({})
 
-  const handleFileChange = useCallback(
-    (type: keyof UploadedFiles, event: React.ChangeEvent<HTMLInputElement>) => {
-      const files = Array.from(event.target.files || [])
+
+  const handleFilesAdded = useCallback(
+    (type: keyof UploadedFiles, files: File[]) => {
       if (files.length === 0) return
 
       const currentFiles = uploadedFiles[type] || []
@@ -33,10 +33,6 @@ export default function FileUpload({ onFilesUpload, isLoading = false, allowedTy
       const newUploadedFiles = { ...uploadedFiles, [type]: newFiles }
       setUploadedFiles(newUploadedFiles)
       onFilesUpload(newUploadedFiles)
-
-      if (fileInputRefs.current[type]) {
-        fileInputRefs.current[type]!.value = ""
-      }
     },
     [uploadedFiles, onFilesUpload],
   )
@@ -86,9 +82,7 @@ export default function FileUpload({ onFilesUpload, isLoading = false, allowedTy
     }
   }
 
-  const setFileInputRef = (type: keyof UploadedFiles) => (el: HTMLInputElement | null) => {
-    fileInputRefs.current[type] = el
-  }
+
 
   const allFileTypes: (keyof UploadedFiles)[] = ["sms", "calls", "contacts", "bank"]
   const fileTypes = allowedTypes || allFileTypes
@@ -140,34 +134,30 @@ export default function FileUpload({ onFilesUpload, isLoading = false, allowedTy
                 </div>
 
                 <div className="space-y-3">
-                  <div className="flex items-center space-x-2">
-                    <Input
-                      id={type}
-                      type="file"
-                      accept=".csv,.xlsx"
-                      onChange={(e) => handleFileChange(type, e)}
-                      className="flex-1 text-sm"
-                      disabled={isLoading}
-                      ref={setFileInputRef(type)}
-                      multiple
-                    />
-                    {fileCount > 0 && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        onClick={() => removeAllFiles(type)}
-                        disabled={isLoading}
-                        title={`Remove all ${getFileTypeLabel(type)} files`}
-                        className="flex-shrink-0 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/20"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
+                  <FileDropZone
+                    onFilesDrop={(files) => handleFilesAdded(type, files)}
+                    accept=".csv,.xlsx"
+                    disabled={isLoading}
+                    icon={getFileIcon(type)}
+                    title={`Upload ${getFileTypeLabel(type)}`}
+                    description="Drag & drop or click to upload CSV/XLSX"
+                    className={fileCount > 0 ? "py-4" : ""}
+                  />
 
                   {fileCount > 0 && (
                     <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                      <div className="flex justify-end mb-2">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeAllFiles(type)}
+                          disabled={isLoading}
+                          className="h-6 text-xs text-muted-foreground hover:text-destructive"
+                        >
+                          Clear all
+                        </Button>
+                      </div>
                       {files.map((file, index) => (
                         <div
                           key={`${type}-${index}`}
@@ -194,13 +184,6 @@ export default function FileUpload({ onFilesUpload, isLoading = false, allowedTy
                     </div>
                   )}
                 </div>
-
-                {fileCount === 0 && (
-                  <div className="text-sm text-muted-foreground flex items-center gap-2 p-3 rounded-md border-2 border-dashed border-border/50 bg-muted/20">
-                    <Plus className="h-4 w-4" />
-                    <span className="text-xs">Add files to analyze</span>
-                  </div>
-                )}
               </div>
             )
           })}
