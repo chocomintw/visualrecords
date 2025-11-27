@@ -103,7 +103,8 @@ export async function parseFile(file: File): Promise<any[]> {
               /Sender Number.*Target Number.*Message.*Timestamp/i,
               /Sender Number.*Receiver Number.*Message.*Timestamp/i,
               /Sender Number.*Target Number.*Call Info.*Timestamp/i,
-              /Sender Number.*Receiver Number.*Call Info.*Timestamp/i
+              /Sender Number.*Receiver Number.*Call Info.*Timestamp/i,
+              /Sender Number.*Receiver Number.*Type.*Timestamp/i
             ]
 
             for (let i = 0; i < Math.min(20, lines.length); i++) {
@@ -230,7 +231,53 @@ export async function parseFile(file: File): Promise<any[]> {
             }
           } else {
             // Standard Excel format
-            jsonData = XLSX.utils.sheet_to_json(worksheet)
+            // Try to find the header row dynamically
+            let headerIndex = -1
+            const headerPatterns = [
+              /Sender Number.*Target Number.*Message.*Timestamp/i,
+              /Sender Number.*Receiver Number.*Message.*Timestamp/i,
+              /Sender Number.*Target Number.*Call Info.*Timestamp/i,
+              /Sender Number.*Receiver Number.*Call Info.*Timestamp/i,
+              /Sender Number.*Receiver Number.*Type.*Timestamp/i
+            ]
+
+            for (let i = 0; i < Math.min(20, jsonArray.length); i++) {
+              const rowStr = (jsonArray[i] || []).join(" ")
+              if (headerPatterns.some(pattern => pattern.test(rowStr))) {
+                headerIndex = i
+                break
+              }
+            }
+
+            if (headerIndex !== -1) {
+              console.log(`Found Excel header at row ${headerIndex}`)
+              jsonData = XLSX.utils.sheet_to_json(worksheet, { range: headerIndex })
+
+              // Convert Excel serial date numbers to readable dates
+              jsonData = jsonData.map(row => {
+                if (row.Timestamp && typeof row.Timestamp === 'number') {
+                  try {
+                    // Use XLSX's built-in date conversion
+                    const date = XLSX.SSF.parse_date_code(row.Timestamp)
+                    if (date) {
+                      // Format as "M/D/YYYY H:MM" to match CSV format
+                      const month = date.m
+                      const day = date.d
+                      const year = date.y
+                      const hours = date.H
+                      const minutes = String(date.M).padStart(2, '0')
+                      row.Timestamp = `${month}/${day}/${year} ${hours}:${minutes}`
+                    }
+                  } catch (e) {
+                    console.warn(`Failed to convert timestamp: ${row.Timestamp}`, e)
+                  }
+                }
+                return row
+              })
+            } else {
+              console.log("No specific header pattern found in Excel file, using default parsing")
+              jsonData = XLSX.utils.sheet_to_json(worksheet)
+            }
           }
 
           console.log(`Parsed ${jsonData.length} rows from Excel file ${file.name}`)
