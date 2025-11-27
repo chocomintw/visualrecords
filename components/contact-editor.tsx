@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
-import { Plus, Download, Upload, Trash2, Edit, FileDigit, Save, ChevronLeft, ChevronRight } from "lucide-react"
+import { Plus, Download, Upload, Trash2, Edit, FileDigit, Save, ChevronLeft, ChevronRight, FileText } from "lucide-react"
 import { Contact } from "@/types"
 import * as XLSX from "xlsx"
 import { toast } from "sonner"
@@ -20,8 +20,11 @@ export default function ContactEditor() {
 
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+    const [isTextImportDialogOpen, setIsTextImportDialogOpen] = useState(false)
     const [currentContact, setCurrentContact] = useState<Contact | null>(null)
     const [editIndex, setEditIndex] = useState<number>(-1)
+    const [textInput, setTextInput] = useState("")
+    const [duplicateMode, setDuplicateMode] = useState<"replace" | "keep-both" | "skip">("keep-both")
     const fileInputRef = useRef<HTMLInputElement>(null)
 
     // Form states
@@ -168,6 +171,104 @@ export default function ContactEditor() {
         toast.success("Numbers processed")
     }
 
+    const parseTextContacts = (text: string): Contact[] => {
+        const lines = text.split('\n').filter(line => line.trim())
+        const contacts: Contact[] = []
+
+        // Regex pattern to match: [time] Name (PhoneNumber) - Status
+        // Example: [23:28:25] Jesus (75262832) - Offline
+        const pattern = /\[.*?\]\s*(.+?)\s*\((\d+)\)/g
+
+        for (const line of lines) {
+            const matches = [...line.matchAll(pattern)]
+            for (const match of matches) {
+                const name = match[1].trim()
+                const phoneNumber = match[2].trim()
+
+                if (name && phoneNumber) {
+                    contacts.push({
+                        "Contact Name": name,
+                        "Phone Number": phoneNumber,
+                        "Full Name": undefined
+                    })
+                }
+            }
+        }
+
+        return contacts
+    }
+
+    const handleTextImport = () => {
+        if (!textInput.trim()) {
+            toast.error("Please paste some text to import")
+            return
+        }
+
+        const parsedContacts = parseTextContacts(textInput)
+
+        if (parsedContacts.length === 0) {
+            toast.error("No valid contacts found in the text")
+            return
+        }
+
+        // Detect duplicates
+        const existingNumbers = new Set(contacts.map(c => c["Phone Number"]))
+        const duplicates: Contact[] = []
+        const unique: Contact[] = []
+
+        parsedContacts.forEach(contact => {
+            if (existingNumbers.has(contact["Phone Number"])) {
+                duplicates.push(contact)
+            } else {
+                unique.push(contact)
+            }
+        })
+
+        let finalContacts = [...contacts]
+        let addedCount = 0
+
+        // Handle duplicates based on mode
+        if (duplicates.length > 0) {
+            if (duplicateMode === "replace") {
+                // Remove old contacts with duplicate numbers
+                const duplicateNumbers = new Set(duplicates.map(d => d["Phone Number"]))
+                finalContacts = finalContacts.filter(c => !duplicateNumbers.has(c["Phone Number"]))
+                finalContacts.push(...duplicates)
+                addedCount = duplicates.length
+            } else if (duplicateMode === "keep-both") {
+                // Add suffix to contact names
+                duplicates.forEach(newContact => {
+                    const phoneNumber = newContact["Phone Number"]
+                    const existingWithSameNumber = finalContacts.filter(
+                        c => c["Phone Number"] === phoneNumber
+                    )
+                    const suffix = existingWithSameNumber.length + 1
+                    finalContacts.push({
+                        ...newContact,
+                        "Contact Name": `${newContact["Contact Name"]} ${suffix}`
+                    })
+                })
+                addedCount = duplicates.length
+            }
+            // If mode is "skip", duplicates are simply not added
+        }
+
+        // Add unique contacts
+        finalContacts.push(...unique)
+        addedCount += unique.length
+
+        setContacts(finalContacts)
+        setTextInput("")
+        setIsTextImportDialogOpen(false)
+
+        if (duplicates.length > 0) {
+            const action = duplicateMode === "replace" ? "replaced" : duplicateMode === "keep-both" ? "added with suffix" : "skipped"
+            toast.success(`Imported ${addedCount} contact${addedCount !== 1 ? 's' : ''}. ${duplicates.length} duplicate${duplicates.length !== 1 ? 's' : ''} ${action}.`)
+        } else {
+            toast.success(`Imported ${addedCount} contact${addedCount !== 1 ? 's' : ''}`)
+        }
+    }
+
     return (
         <div className="space-y-6">
             <Card className="border-border/50 shadow-sm">
@@ -187,8 +288,52 @@ export default function ContactEditor() {
                             />
                             <Button variant="outline" onClick={handleImportClick}>
                                 <Upload className="mr-2 h-4 w-4" />
-                                Import
+                                Import File
                             </Button>
+                            <Dialog open={isTextImportDialogOpen} onOpenChange={setIsTextImportDialogOpen}>
+                                <DialogTrigger asChild>
+                                    <Button variant="outline">
+                                        <FileText className="mr-2 h-4 w-4" />
+                                        Import Text
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-2xl">
+                                    <DialogHeader>
+                                        <DialogTitle>Import Contacts from Text</DialogTitle>
+                                    </DialogHeader>
+                                    <div className="grid gap-4 py-4">
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="text-input">Paste your contacts</Label>
+                                            <textarea
+                                                id="text-input"
+                                                value={textInput}
+                                                onChange={(e) => setTextInput(e.target.value)}
+                                                placeholder="[23:28:25] Jesus (75262832) - Offline&#10;[23:30:15] Maria (88123456) - Online"
+                                                className="min-h-[200px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 font-mono"
+                                            />
+                                            <p className="text-sm text-muted-foreground">
+                                                Format: <code className="bg-muted px-1 py-0.5 rounded">[time] Name (PhoneNumber) - Status</code>
+                                            </p>
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="duplicate-mode">If duplicate phone numbers are found:</Label>
+                                            <select
+                                                id="duplicate-mode"
+                                                value={duplicateMode}
+                                                onChange={(e) => setDuplicateMode(e.target.value as "replace" | "keep-both" | "skip")}
+                                                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                            >
+                                                <option value="keep-both">Keep both (add number suffix to name)</option>
+                                                <option value="replace">Replace existing contact</option>
+                                                <option value="skip">Skip duplicate</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <DialogFooter>
+                                        <Button onClick={handleTextImport}>Import Contacts</Button>
+                                    </DialogFooter>
+                                </DialogContent>
+                            </Dialog>
                             <Button variant="outline" onClick={handleExportCSV}>
                                 <Download className="mr-2 h-4 w-4" />
                                 Export CSV
