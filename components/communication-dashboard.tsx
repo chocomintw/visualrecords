@@ -50,7 +50,7 @@ export default function CommunicationDashboard() {
                             </div>
                             <Progress value={100} className="w-full h-2" />
                             <p className="text-xs text-muted-foreground text-center">
-                                Analyzing data patterns and generating insights
+                                Analyzing data patterns and generating insights!
                             </p>
                         </div>
                     </CardContent>
