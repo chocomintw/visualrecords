@@ -5,7 +5,8 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Search, MessageSquare, Phone, User, UserX, ExternalLink, Users, ArrowLeftRight } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Search, MessageSquare, Phone, User, UserX, ExternalLink, Users, ArrowLeftRight, Download, CheckSquare, Square } from "lucide-react"
 import { useState, useMemo } from "react"
 import { useAppStore } from "@/lib/store"
 
@@ -42,6 +43,9 @@ export default function ConversationExplorer() {
     const [searchTerm, setSearchTerm] = useState("")
     const [selectedConversation, setSelectedConversation] = useState<string | null>(null)
     const [activeTab, setActiveTab] = useState<"all" | "messages" | "calls">("all")
+    const [isSelectionMode, setIsSelectionMode] = useState(false)
+    const [selectedMessages, setSelectedMessages] = useState<Set<number>>(new Set())
+    const [isExporting, setIsExporting] = useState(false)
 
     // Create contact lookup map
     const contactMap = useMemo(() => {
@@ -248,6 +252,93 @@ export default function ConversationExplorer() {
         }
     }, [selectedConversation, conversations, filteredConversations, activeTab])
 
+    // Reset selection when conversation changes
+    useMemo(() => {
+        setIsSelectionMode(false)
+        setSelectedMessages(new Set())
+    }, [selectedConversation])
+
+    const toggleMessageSelection = (index: number) => {
+        const newSelected = new Set(selectedMessages)
+        if (newSelected.has(index)) {
+            newSelected.delete(index)
+        } else {
+            newSelected.add(index)
+        }
+        setSelectedMessages(newSelected)
+    }
+
+    const handleExport = async () => {
+        if (!currentConversation || isExporting) return
+
+        setIsExporting(true)
+        try {
+            const { toPng } = await import("html-to-image")
+            const elementToCapture = document.getElementById("conversation-container")
+            if (!elementToCapture) return
+
+            const container = document.createElement("div")
+            container.style.position = "fixed"
+            container.style.left = "0"
+            container.style.top = "0"
+            container.style.zIndex = "-9999"
+            container.style.width = "800px"
+            container.style.backgroundColor = "white"
+            container.style.padding = "20px"
+            container.className = "space-y-4"
+            document.body.appendChild(container)
+
+            const header = document.createElement("div")
+            header.className = "mb-6 border-b pb-4"
+            header.innerHTML = `
+                <h2 class="text-xl font-bold">${currentConversation.participant1Display} <-> ${currentConversation.participant2Display}</h2>
+                <p class="text-sm text-gray-500">Exported on ${new Date().toLocaleDateString()}</p>
+            `
+            container.appendChild(header)
+
+            const messagesToExport = isSelectionMode
+                ? currentConversation.messages.filter((_, idx) => selectedMessages.has(idx))
+                : currentConversation.messages
+
+            const messageElements = document.querySelectorAll("[data-message-index]")
+            messageElements.forEach((el) => {
+                const index = parseInt(el.getAttribute("data-message-index") || "-1")
+                if (messagesToExport.includes(currentConversation.messages[index])) {
+                    const clone = el.cloneNode(true) as HTMLElement
+                    const checkbox = clone.querySelector(".selection-checkbox")
+                    if (checkbox) checkbox.remove()
+
+                    const computedStyle = window.getComputedStyle(el)
+                    clone.style.fontFamily = computedStyle.fontFamily
+                    clone.style.width = "100%"
+                    container.appendChild(clone)
+                }
+            })
+
+            await new Promise(resolve => setTimeout(resolve, 100))
+            const dataUrl = await toPng(container, {
+                backgroundColor: "#ffffff",
+                pixelRatio: 2,
+                skipFonts: true
+            })
+
+            const link = document.createElement("a")
+            link.href = dataUrl
+            link.download = `conversation-export-${new Date().getTime()}.png`
+            link.click()
+
+            document.body.removeChild(container)
+            if (isSelectionMode) {
+                setIsSelectionMode(false)
+                setSelectedMessages(new Set())
+            }
+        } catch (error) {
+            console.error("Export failed:", error)
+        } finally {
+            setIsExporting(false)
+        }
+    }
+
     // Function to render message content with embedded images
     const renderMessageContent = (message: ConversationMessage) => {
         const content = message["Message Body"] || ""
@@ -421,36 +512,76 @@ export default function ConversationExplorer() {
                 {/* Conversation History */}
                 <Card className="lg:col-span-2">
                     <CardHeader className="pb-4">
-                        <CardTitle className="text-xl">
-                            {currentConversation ? (
-                                <div className="flex items-center gap-2">
-                                    <span>{currentConversation.participant1Display}</span>
-                                    <ArrowLeftRight className="h-4 w-4 text-muted-foreground" />
-                                    <span>{currentConversation.participant2Display}</span>
-                                </div>
-                            ) : (
-                                "Select a conversation"
-                            )}
-                        </CardTitle>
-                        <CardDescription className="text-base">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <CardTitle className="text-xl">
+                                    {currentConversation ? (
+                                        <div className="flex items-center gap-2">
+                                            <span>{currentConversation.participant1Display}</span>
+                                            <ArrowLeftRight className="h-4 w-4 text-muted-foreground" />
+                                            <span>{currentConversation.participant2Display}</span>
+                                        </div>
+                                    ) : (
+                                        "Select a conversation"
+                                    )}
+                                </CardTitle>
+                                <CardDescription className="text-base mt-1">
+                                    {currentConversation && (
+                                        <div className="flex items-center gap-4">
+                                            <span>{currentConversation.messageCount} messages</span>
+                                            <span>{currentConversation.callCount} calls</span>
+                                            <span>
+                                                First: {new Date(currentConversation.messages[0]?.Timestamp).toLocaleDateString()} - Last:{" "}
+                                                {new Date(currentConversation.lastActivity).toLocaleDateString()}
+                                            </span>
+                                        </div>
+                                    )}
+                                </CardDescription>
+                            </div>
                             {currentConversation && (
-                                <div className="flex items-center gap-4">
-                                    <span>{currentConversation.messageCount} messages</span>
-                                    <span>{currentConversation.callCount} calls</span>
-                                    <span>
-                                        First: {new Date(currentConversation.messages[0]?.Timestamp).toLocaleDateString()} - Last:{" "}
-                                        {new Date(currentConversation.lastActivity).toLocaleDateString()}
-                                    </span>
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        variant={isSelectionMode ? "default" : "outline"}
+                                        size="sm"
+                                        onClick={() => setIsSelectionMode(!isSelectionMode)}
+                                        disabled={isExporting}
+                                    >
+                                        {isSelectionMode ? (
+                                            <>
+                                                <CheckSquare className="h-4 w-4 mr-2" />
+                                                Cancel Selection
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Square className="h-4 w-4 mr-2" />
+                                                Select Messages
+                                            </>
+                                        )}
+                                    </Button>
+                                    <Button
+                                        variant="secondary"
+                                        size="sm"
+                                        onClick={handleExport}
+                                        disabled={isExporting || (isSelectionMode && selectedMessages.size === 0)}
+                                    >
+                                        <Download className="h-4 w-4 mr-2" />
+                                        {isExporting
+                                            ? "Exporting..."
+                                            : isSelectionMode
+                                                ? `Export (${selectedMessages.size})`
+                                                : "Export All"
+                                        }
+                                    </Button>
                                 </div>
                             )}
-                        </CardDescription>
+                        </div>
                     </CardHeader>
                     <CardContent className="p-0">
                         <ScrollArea className="h-[640px]">
-                            <div className="space-y-4 p-4 pb-2">
+                            <div id="conversation-container" className="space-y-4 p-4 pb-2">
                                 {currentConversation ? (
                                     currentConversation.messages.map((message, index) => (
-                                        <div key={index} className="flex gap-3">
+                                        <div key={index} className="flex gap-3" data-message-index={index}>
                                             {/* Timeline indicator */}
                                             <div className="flex flex-col items-center flex-shrink-0">
                                                 <div
@@ -466,7 +597,21 @@ export default function ConversationExplorer() {
 
                                             {/* Message content */}
                                             <div className="flex-1 pb-2">
-                                                <div className="bg-muted/50 rounded-lg p-3 border">
+                                                <div
+                                                    className={`bg-muted/50 rounded-lg p-3 border transition-all relative ${isSelectionMode
+                                                            ? selectedMessages.has(index)
+                                                                ? "border-primary bg-primary/5 shadow-sm"
+                                                                : "hover:border-primary/50 cursor-pointer"
+                                                            : ""
+                                                        }`}
+                                                    onClick={() => isSelectionMode && toggleMessageSelection(index)}
+                                                >
+                                                    {/* Selection indicator */}
+                                                    {isSelectionMode && selectedMessages.has(index) && (
+                                                        <div className="absolute top-2 right-2 selection-checkbox">
+                                                            <CheckSquare className="h-5 w-5 text-primary" />
+                                                        </div>
+                                                    )}
                                                     {/* Header with participants */}
                                                     <div className="flex items-center justify-between mb-2 pb-2 border-b">
                                                         <div className="flex flex-col">
