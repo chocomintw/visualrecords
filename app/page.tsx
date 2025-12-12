@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import { Tabs, TabsList, TabsContent, TabsTrigger } from "@/components/ui/tabs"
-import { MessageSquare, Users, Wallet } from "lucide-react"
-import CommunicationDashboard from "@/components/communication-dashboard"
-import ContactEditor from "@/components/contact-editor"
-import { BankAnalyzer } from "@/components/bank-analyzer"
+import { Tabs, TabsList, TabsContent, TabsTrigger } from "@/components/ui/tabs";
+import { MessageSquare, Users, Wallet } from "lucide-react";
+import CommunicationDashboard from "@/components/communication-dashboard";
+import ContactEditor from "@/components/contact-editor";
+import { BankAnalyzer } from "@/components/bank-analyzer";
 
 export default function Home() {
   return (
@@ -53,5 +53,5 @@ export default function Home() {
         </Tabs>
       </div>
     </div>
-  )
+  );
 }

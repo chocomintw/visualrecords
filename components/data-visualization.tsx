@@ -1,7 +1,13 @@
-"use client"
+"use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   BarChart,
   Bar,
@@ -16,36 +22,38 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-} from "recharts"
-import { useAppStore } from "@/lib/store"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Badge } from "@/components/ui/badge"
-import { Phone, MessageSquare, User, UserX } from "lucide-react"
-import { useState, useMemo } from "react"
+} from "recharts";
+import { useAppStore } from "@/lib/store";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
+import { Phone, MessageSquare, User, UserX } from "lucide-react";
+import { useState, useMemo } from "react";
 
 interface CallConversation {
-  contactName: string
+  contactName: string;
   calls: Array<{
-    "Call #"?: string
-    "Sender Number": string
-    "Receiver Number": string
-    "Call Info": string
-    Type: "Sender" | "Receiver"
-    Timestamp: string
-    isOutgoing: boolean
-  }>
-  callCount: number
-  lastActivity: string
+    "Call #"?: string;
+    "Sender Number": string;
+    "Receiver Number": string;
+    "Call Info": string;
+    Type: "Sender" | "Receiver";
+    Timestamp: string;
+    isOutgoing: boolean;
+  }>;
+  callCount: number;
+  lastActivity: string;
 }
 
 export default function DataVisualization() {
-  const communicationStats = useAppStore((state) => state.communicationStats)
-  const { parsedData } = useAppStore()
-  const { calls, contacts, sms } = parsedData
-  const [selectedCallContact, setSelectedCallContact] = useState<string | null>(null)
+  const communicationStats = useAppStore((state) => state.communicationStats);
+  const { parsedData } = useAppStore();
+  const { calls, contacts, sms } = parsedData;
+  const [selectedCallContact, setSelectedCallContact] = useState<string | null>(
+    null,
+  );
 
   if (!communicationStats) {
-    return null
+    return null;
   }
 
   const {
@@ -58,137 +66,175 @@ export default function DataVisualization() {
     textsPerUnknown,
     callsPerUnknown,
     topUnknownByInteractions,
-    unknownNumbersByDay
-  } = communicationStats
+    unknownNumbersByDay,
+  } = communicationStats;
 
   // Get the main phone number from parsed data
   const mainPhoneNumber = useMemo(() => {
-    return getMainPhoneNumber(calls, sms)
-  }, [calls, sms])
+    return getMainPhoneNumber(calls, sms);
+  }, [calls, sms]);
 
   // Process call conversations with proper direction guessing
   const callConversations = useMemo(() => {
-    const contactMap = createContactMap(contacts)
-    const conversationMap: { [key: string]: CallConversation } = {}
+    const contactMap = createContactMap(contacts);
+    const conversationMap: { [key: string]: CallConversation } = {};
 
     // Process calls into conversations with proper direction
     calls.forEach((call: any) => {
-      const { contactNumber, isOutgoing } = determineCallDirection(call, mainPhoneNumber)
-      const contactName = contactMap[contactNumber] || `Unknown (${contactNumber})`
+      const { contactNumber, isOutgoing } = determineCallDirection(
+        call,
+        mainPhoneNumber,
+      );
+      const contactName =
+        contactMap[contactNumber] || `Unknown (${contactNumber})`;
 
       if (!conversationMap[contactName]) {
         conversationMap[contactName] = {
           contactName,
           calls: [],
           callCount: 0,
-          lastActivity: ""
-        }
+          lastActivity: "",
+        };
       }
 
       conversationMap[contactName].calls.push({
         ...call,
-        isOutgoing
-      })
-      conversationMap[contactName].callCount++
+        isOutgoing,
+      });
+      conversationMap[contactName].callCount++;
 
       // Update last activity
-      const callDate = new Date(call.Timestamp)
-      const currentLastActivity = new Date(conversationMap[contactName].lastActivity || 0)
+      const callDate = new Date(call.Timestamp);
+      const currentLastActivity = new Date(
+        conversationMap[contactName].lastActivity || 0,
+      );
       if (callDate > currentLastActivity) {
-        conversationMap[contactName].lastActivity = call.Timestamp
+        conversationMap[contactName].lastActivity = call.Timestamp;
       }
-    })
+    });
 
     // Sort conversations by most recent activity and sort calls chronologically
     return Object.values(conversationMap)
-      .map(conversation => ({
+      .map((conversation) => ({
         ...conversation,
-        calls: conversation.calls.sort((a, b) =>
-          new Date(a.Timestamp).getTime() - new Date(b.Timestamp).getTime()
-        )
+        calls: conversation.calls.sort(
+          (a, b) =>
+            new Date(a.Timestamp).getTime() - new Date(b.Timestamp).getTime(),
+        ),
       }))
-      .sort((a, b) => new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime())
-  }, [calls, contacts, mainPhoneNumber])
+      .sort(
+        (a, b) =>
+          new Date(b.lastActivity).getTime() -
+          new Date(a.lastActivity).getTime(),
+      );
+  }, [calls, contacts, mainPhoneNumber]);
 
   const selectedCallConversation = selectedCallContact
     ? callConversations.find((c) => c.contactName === selectedCallContact)
-    : callConversations[0]
+    : callConversations[0];
 
   // Enhanced stats with direction information
   const enhancedStats = useMemo(() => {
-    if (!communicationStats) return null
+    if (!communicationStats) return null;
 
     // Add outgoing/incoming breakdown to calls per day
-    const enhancedCallsPerDay = callsPerDay.map(day => {
+    const enhancedCallsPerDay = callsPerDay.map((day) => {
       const dayCalls = calls.filter((call: any) => {
-        const callDate = new Date(call.Timestamp).toDateString()
-        const statDate = new Date(day.date).toDateString()
-        return callDate === statDate
-      })
+        const callDate = new Date(call.Timestamp).toDateString();
+        const statDate = new Date(day.date).toDateString();
+        return callDate === statDate;
+      });
 
       const outgoing = dayCalls.filter((call: any) => {
-        const { isOutgoing } = determineCallDirection(call, mainPhoneNumber)
-        return isOutgoing
-      }).length
+        const { isOutgoing } = determineCallDirection(call, mainPhoneNumber);
+        return isOutgoing;
+      }).length;
 
       const incoming = dayCalls.filter((call: any) => {
-        const { isOutgoing } = determineCallDirection(call, mainPhoneNumber)
-        return !isOutgoing
-      }).length
+        const { isOutgoing } = determineCallDirection(call, mainPhoneNumber);
+        return !isOutgoing;
+      }).length;
 
       return {
         ...day,
         outgoing,
-        incoming
-      }
-    })
+        incoming,
+      };
+    });
 
     // Add direction breakdown to calls per contact
-    const enhancedCallsPerContact = callsPerContact.map(contactStat => {
+    const enhancedCallsPerContact = callsPerContact.map((contactStat) => {
       const contactCalls = calls.filter((call: any) => {
-        const { contactNumber } = determineCallDirection(call, mainPhoneNumber)
-        const contactName = createContactMap(contacts)[contactNumber] || `Unknown (${contactNumber})`
-        return contactName === contactStat.name
-      })
+        const { contactNumber } = determineCallDirection(call, mainPhoneNumber);
+        const contactName =
+          createContactMap(contacts)[contactNumber] ||
+          `Unknown (${contactNumber})`;
+        return contactName === contactStat.name;
+      });
 
       const outgoing = contactCalls.filter((call: any) => {
-        const { isOutgoing } = determineCallDirection(call, mainPhoneNumber)
-        return isOutgoing
-      }).length
+        const { isOutgoing } = determineCallDirection(call, mainPhoneNumber);
+        return isOutgoing;
+      }).length;
 
       const incoming = contactCalls.filter((call: any) => {
-        const { isOutgoing } = determineCallDirection(call, mainPhoneNumber)
-        return !isOutgoing
-      }).length
+        const { isOutgoing } = determineCallDirection(call, mainPhoneNumber);
+        return !isOutgoing;
+      }).length;
 
       return {
         ...contactStat,
         outgoing,
-        incoming
-      }
-    })
+        incoming,
+      };
+    });
 
     return {
       ...communicationStats,
       enhancedCallsPerDay,
-      enhancedCallsPerContact
-    }
-  }, [communicationStats, calls, contacts, mainPhoneNumber, callsPerDay, callsPerContact])
+      enhancedCallsPerContact,
+    };
+  }, [
+    communicationStats,
+    calls,
+    contacts,
+    mainPhoneNumber,
+    callsPerDay,
+    callsPerContact,
+  ]);
 
-  const COLORS = ["#3b82f6", "#10b981", "#8b5cf6", "#f59e0b", "#ef4444", "#06b6d4", "#84cc16", "#f97316"]
-  const UNKNOWN_COLORS = ["#ef4444", "#f97316", "#f59e0b", "#eab308", "#84cc16", "#06b6d4", "#8b5cf6", "#a855f7"]
-  const DIRECTION_COLORS = ["#10b981", "#3b82f6"] // Outgoing, Incoming
+  const COLORS = [
+    "#3b82f6",
+    "#10b981",
+    "#8b5cf6",
+    "#f59e0b",
+    "#ef4444",
+    "#06b6d4",
+    "#84cc16",
+    "#f97316",
+  ];
+  const UNKNOWN_COLORS = [
+    "#ef4444",
+    "#f97316",
+    "#f59e0b",
+    "#eab308",
+    "#84cc16",
+    "#06b6d4",
+    "#8b5cf6",
+    "#a855f7",
+  ];
+  const DIRECTION_COLORS = ["#10b981", "#3b82f6"]; // Outgoing, Incoming
 
   const tooltipStyle = {
     contentStyle: {
       backgroundColor: "hsl(var(--popover))",
       borderColor: "hsl(var(--border))",
       borderRadius: "var(--radius)",
-      color: "hsl(var(--popover-foreground))"
+      color: "hsl(var(--popover-foreground))",
     },
     itemStyle: { color: "hsl(var(--popover-foreground))" },
-    labelStyle: { color: "hsl(var(--popover-foreground))" }
-  }
+    labelStyle: { color: "hsl(var(--popover-foreground))" },
+  };
 
   return (
     <div className="space-y-6">
@@ -204,7 +250,10 @@ export default function DataVisualization() {
 
       <Tabs defaultValue="daily" className="space-y-6">
         <TabsList className="grid w-full grid-cols-3 max-w-3xl mx-auto p-0 bg-muted rounded-lg">
-          <TabsTrigger value="daily" className="py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+          <TabsTrigger
+            value="daily"
+            className="py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+          >
             Daily Activity
           </TabsTrigger>
           <TabsTrigger
@@ -213,7 +262,10 @@ export default function DataVisualization() {
           >
             Top Contacts
           </TabsTrigger>
-          <TabsTrigger value="unknown" className="py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+          <TabsTrigger
+            value="unknown"
+            className="py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+          >
             Unknown Numbers
           </TabsTrigger>
         </TabsList>
@@ -225,40 +277,62 @@ export default function DataVisualization() {
             <Card>
               <CardHeader>
                 <CardTitle>Calls Per Day</CardTitle>
-                <CardDescription>Daily call volume with outgoing/incoming breakdown</CardDescription>
+                <CardDescription>
+                  Daily call volume with outgoing/incoming breakdown
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={enhancedStats?.enhancedCallsPerDay || callsPerDay}>
+                  <BarChart
+                    data={enhancedStats?.enhancedCallsPerDay || callsPerDay}
+                  >
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis
                       dataKey="date"
                       tickFormatter={(value) => {
-                        const date = new Date(value)
-                        return date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+                        const date = new Date(value);
+                        return date.toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                        });
                       }}
                     />
                     <YAxis />
                     <Tooltip
                       {...tooltipStyle}
                       labelFormatter={(value) => {
-                        const date = new Date(value)
+                        const date = new Date(value);
                         return date.toLocaleDateString("en-US", {
                           weekday: "short",
                           year: "numeric",
                           month: "short",
                           day: "numeric",
-                        })
+                        });
                       }}
                     />
                     <Legend />
                     {enhancedStats?.enhancedCallsPerDay ? (
                       <>
-                        <Bar dataKey="outgoing" fill="#10b981" name="Outgoing Calls" isAnimationActive={false} />
-                        <Bar dataKey="incoming" fill="#3b82f6" name="Incoming Calls" isAnimationActive={false} />
+                        <Bar
+                          dataKey="outgoing"
+                          fill="#10b981"
+                          name="Outgoing Calls"
+                          isAnimationActive={false}
+                        />
+                        <Bar
+                          dataKey="incoming"
+                          fill="#3b82f6"
+                          name="Incoming Calls"
+                          isAnimationActive={false}
+                        />
                       </>
                     ) : (
-                      <Bar dataKey="count" fill="#10b981" name="Calls" isAnimationActive={false} />
+                      <Bar
+                        dataKey="count"
+                        fill="#10b981"
+                        name="Calls"
+                        isAnimationActive={false}
+                      />
                     )}
                   </BarChart>
                 </ResponsiveContainer>
@@ -278,24 +352,32 @@ export default function DataVisualization() {
                     <XAxis
                       dataKey="date"
                       tickFormatter={(value) => {
-                        const date = new Date(value)
-                        return date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+                        const date = new Date(value);
+                        return date.toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                        });
                       }}
                     />
                     <YAxis />
                     <Tooltip
                       {...tooltipStyle}
                       labelFormatter={(value) => {
-                        const date = new Date(value)
+                        const date = new Date(value);
                         return date.toLocaleDateString("en-US", {
                           weekday: "short",
                           year: "numeric",
                           month: "short",
                           day: "numeric",
-                        })
+                        });
                       }}
                     />
-                    <Bar dataKey="count" fill="#3b82f6" name="Texts" isAnimationActive={false} />
+                    <Bar
+                      dataKey="count"
+                      fill="#3b82f6"
+                      name="Texts"
+                      isAnimationActive={false}
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -320,17 +402,25 @@ export default function DataVisualization() {
                       cx="50%"
                       cy="50%"
                       labelLine={false}
-                      label={({ name, percent }) => `${name} (${((percent ?? 0) * 100).toFixed(0)}%)`}
+                      label={({ name, percent }) =>
+                        `${name} (${((percent ?? 0) * 100).toFixed(0)}%)`
+                      }
                       outerRadius={80}
                       fill="#8884d8"
                       dataKey="value"
                       isAnimationActive={false}
                     >
                       {textsPerContact.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={COLORS[index % COLORS.length]}
+                        />
                       ))}
                     </Pie>
-                    <Tooltip {...tooltipStyle} formatter={(value) => [`${value} texts`, "Count"]} />
+                    <Tooltip
+                      {...tooltipStyle}
+                      formatter={(value) => [`${value} texts`, "Count"]}
+                    />
                     <Legend />
                   </PieChart>
                 </ResponsiveContainer>
@@ -341,12 +431,16 @@ export default function DataVisualization() {
             <Card>
               <CardHeader>
                 <CardTitle>Calls Per Contact</CardTitle>
-                <CardDescription>Top contacts by call volume with direction</CardDescription>
+                <CardDescription>
+                  Top contacts by call volume with direction
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart
-                    data={enhancedStats?.enhancedCallsPerContact || callsPerContact}
+                    data={
+                      enhancedStats?.enhancedCallsPerContact || callsPerContact
+                    }
                     layout="vertical"
                     margin={{ left: 100, right: 20 }}
                   >
@@ -362,11 +456,26 @@ export default function DataVisualization() {
                     <Legend />
                     {enhancedStats?.enhancedCallsPerContact ? (
                       <>
-                        <Bar dataKey="outgoing" fill="#10b981" name="Outgoing" isAnimationActive={false} />
-                        <Bar dataKey="incoming" fill="#3b82f6" name="Incoming" isAnimationActive={false} />
+                        <Bar
+                          dataKey="outgoing"
+                          fill="#10b981"
+                          name="Outgoing"
+                          isAnimationActive={false}
+                        />
+                        <Bar
+                          dataKey="incoming"
+                          fill="#3b82f6"
+                          name="Incoming"
+                          isAnimationActive={false}
+                        />
                       </>
                     ) : (
-                      <Bar dataKey="value" fill="#10b981" name="Calls" isAnimationActive={false} />
+                      <Bar
+                        dataKey="value"
+                        fill="#10b981"
+                        name="Calls"
+                        isAnimationActive={false}
+                      />
                     )}
                   </BarChart>
                 </ResponsiveContainer>
@@ -377,7 +486,9 @@ export default function DataVisualization() {
             <Card className="lg:col-span-2">
               <CardHeader>
                 <CardTitle>Contacts Activity Over Time</CardTitle>
-                <CardDescription>Daily interactions with known contacts</CardDescription>
+                <CardDescription>
+                  Daily interactions with known contacts
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
@@ -386,26 +497,43 @@ export default function DataVisualization() {
                     <XAxis
                       dataKey="date"
                       tickFormatter={(value) => {
-                        const date = new Date(value)
-                        return date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+                        const date = new Date(value);
+                        return date.toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                        });
                       }}
                     />
                     <YAxis />
                     <Tooltip
                       {...tooltipStyle}
                       labelFormatter={(value) => {
-                        const date = new Date(value)
+                        const date = new Date(value);
                         return date.toLocaleDateString("en-US", {
                           weekday: "short",
                           year: "numeric",
                           month: "short",
                           day: "numeric",
-                        })
+                        });
                       }}
                     />
                     <Legend />
-                    <Line type="monotone" dataKey="texts" stroke="#3b82f6" strokeWidth={2} name="Contact Texts" isAnimationActive={false} />
-                    <Line type="monotone" dataKey="calls" stroke="#10b981" strokeWidth={2} name="Contact Calls" isAnimationActive={false} />
+                    <Line
+                      type="monotone"
+                      dataKey="texts"
+                      stroke="#3b82f6"
+                      strokeWidth={2}
+                      name="Contact Texts"
+                      isAnimationActive={false}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="calls"
+                      stroke="#10b981"
+                      strokeWidth={2}
+                      name="Contact Calls"
+                      isAnimationActive={false}
+                    />
                   </LineChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -415,18 +543,35 @@ export default function DataVisualization() {
             <Card className="lg:col-span-2">
               <CardHeader>
                 <CardTitle>Top Contacts - Total Interactions</CardTitle>
-                <CardDescription>Combined calls and texts for top contacts</CardDescription>
+                <CardDescription>
+                  Combined calls and texts for top contacts
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={400}>
                   <BarChart data={topContactsByInteractions} layout="vertical">
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis type="number" />
-                    <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 12 }} />
+                    <YAxis
+                      type="category"
+                      dataKey="name"
+                      width={100}
+                      tick={{ fontSize: 12 }}
+                    />
                     <Tooltip {...tooltipStyle} />
                     <Legend />
-                    <Bar dataKey="texts" fill="#3b82f6" name="Texts" isAnimationActive={false} />
-                    <Bar dataKey="calls" fill="#10b981" name="Calls" isAnimationActive={false} />
+                    <Bar
+                      dataKey="texts"
+                      fill="#3b82f6"
+                      name="Texts"
+                      isAnimationActive={false}
+                    />
+                    <Bar
+                      dataKey="calls"
+                      fill="#10b981"
+                      name="Calls"
+                      isAnimationActive={false}
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -441,7 +586,9 @@ export default function DataVisualization() {
             <Card>
               <CardHeader>
                 <CardTitle>Texts From Unknown Numbers</CardTitle>
-                <CardDescription>Top unknown numbers by SMS volume</CardDescription>
+                <CardDescription>
+                  Top unknown numbers by SMS volume
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
@@ -451,17 +598,25 @@ export default function DataVisualization() {
                       cx="50%"
                       cy="50%"
                       labelLine={false}
-                      label={({ name, percent }) => `${name} (${((percent ?? 0) * 100).toFixed(0)}%)`}
+                      label={({ name, percent }) =>
+                        `${name} (${((percent ?? 0) * 100).toFixed(0)}%)`
+                      }
                       outerRadius={80}
                       fill="#8884d8"
                       dataKey="value"
                       isAnimationActive={false}
                     >
                       {textsPerUnknown.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={UNKNOWN_COLORS[index % UNKNOWN_COLORS.length]} />
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={UNKNOWN_COLORS[index % UNKNOWN_COLORS.length]}
+                        />
                       ))}
                     </Pie>
-                    <Tooltip {...tooltipStyle} formatter={(value) => [`${value} texts`, "Count"]} />
+                    <Tooltip
+                      {...tooltipStyle}
+                      formatter={(value) => [`${value} texts`, "Count"]}
+                    />
                     <Legend />
                   </PieChart>
                 </ResponsiveContainer>
@@ -472,7 +627,9 @@ export default function DataVisualization() {
             <Card>
               <CardHeader>
                 <CardTitle>Calls From Unknown Numbers</CardTitle>
-                <CardDescription>Top unknown numbers by call volume</CardDescription>
+                <CardDescription>
+                  Top unknown numbers by call volume
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
@@ -482,17 +639,25 @@ export default function DataVisualization() {
                       cx="50%"
                       cy="50%"
                       labelLine={false}
-                      label={({ name, percent }) => `${name} (${((percent ?? 0) * 100).toFixed(0)}%)`}
+                      label={({ name, percent }) =>
+                        `${name} (${((percent ?? 0) * 100).toFixed(0)}%)`
+                      }
                       outerRadius={80}
                       fill="#8884d8"
                       dataKey="value"
                       isAnimationActive={false}
                     >
                       {callsPerUnknown.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={UNKNOWN_COLORS[index % UNKNOWN_COLORS.length]} />
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={UNKNOWN_COLORS[index % UNKNOWN_COLORS.length]}
+                        />
                       ))}
                     </Pie>
-                    <Tooltip {...tooltipStyle} formatter={(value) => [`${value} calls`, "Count"]} />
+                    <Tooltip
+                      {...tooltipStyle}
+                      formatter={(value) => [`${value} calls`, "Count"]}
+                    />
                     <Legend />
                   </PieChart>
                 </ResponsiveContainer>
@@ -503,7 +668,9 @@ export default function DataVisualization() {
             <Card className="lg:col-span-2">
               <CardHeader>
                 <CardTitle>Unknown Numbers Activity Over Time</CardTitle>
-                <CardDescription>Daily unknown number interactions</CardDescription>
+                <CardDescription>
+                  Daily unknown number interactions
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
@@ -512,26 +679,43 @@ export default function DataVisualization() {
                     <XAxis
                       dataKey="date"
                       tickFormatter={(value) => {
-                        const date = new Date(value)
-                        return date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+                        const date = new Date(value);
+                        return date.toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                        });
                       }}
                     />
                     <YAxis />
                     <Tooltip
                       {...tooltipStyle}
                       labelFormatter={(value) => {
-                        const date = new Date(value)
+                        const date = new Date(value);
                         return date.toLocaleDateString("en-US", {
                           weekday: "short",
                           year: "numeric",
                           month: "short",
                           day: "numeric",
-                        })
+                        });
                       }}
                     />
                     <Legend />
-                    <Line type="monotone" dataKey="texts" stroke="#ef4444" strokeWidth={2} name="Unknown Texts" isAnimationActive={false} />
-                    <Line type="monotone" dataKey="calls" stroke="#f97316" strokeWidth={2} name="Unknown Calls" isAnimationActive={false} />
+                    <Line
+                      type="monotone"
+                      dataKey="texts"
+                      stroke="#ef4444"
+                      strokeWidth={2}
+                      name="Unknown Texts"
+                      isAnimationActive={false}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="calls"
+                      stroke="#f97316"
+                      strokeWidth={2}
+                      name="Unknown Calls"
+                      isAnimationActive={false}
+                    />
                   </LineChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -541,95 +725,113 @@ export default function DataVisualization() {
             <Card className="lg:col-span-2">
               <CardHeader>
                 <CardTitle>Top Unknown Numbers - Total Interactions</CardTitle>
-                <CardDescription>Combined calls and texts for unknown numbers</CardDescription>
+                <CardDescription>
+                  Combined calls and texts for unknown numbers
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={400}>
                   <BarChart data={topUnknownByInteractions} layout="vertical">
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis type="number" />
-                    <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 12 }} />
+                    <YAxis
+                      type="category"
+                      dataKey="name"
+                      width={120}
+                      tick={{ fontSize: 12 }}
+                    />
                     <Tooltip {...tooltipStyle} />
                     <Legend />
-                    <Bar dataKey="texts" fill="#ef4444" name="Texts" isAnimationActive={false} />
-                    <Bar dataKey="calls" fill="#f97316" name="Calls" isAnimationActive={false} />
+                    <Bar
+                      dataKey="texts"
+                      fill="#ef4444"
+                      name="Texts"
+                      isAnimationActive={false}
+                    />
+                    <Bar
+                      dataKey="calls"
+                      fill="#f97316"
+                      name="Calls"
+                      isAnimationActive={false}
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
           </div>
         </TabsContent>
-
-
       </Tabs>
     </div>
-  )
+  );
 }
 
 // Enhanced helper functions with phone number guessing
 function createContactMap(contacts: any[]): { [key: string]: string } {
-  const contactMap: { [key: string]: string } = {}
+  const contactMap: { [key: string]: string } = {};
   contacts.forEach((contact: any) => {
-    contactMap[contact["Phone Number"]] = contact["Contact Name"]
-  })
-  return contactMap
+    contactMap[contact["Phone Number"]] = contact["Contact Name"];
+  });
+  return contactMap;
 }
 
 function getMainPhoneNumber(calls: any[], sms: any[]): string {
   // Try to get from the Type field in calls and SMS first
-  const sentCalls = calls.filter((call: any) => call.Type === "Sender")
-  const sentSMS = sms.filter((message: any) => message.Type === "Sender")
+  const sentCalls = calls.filter((call: any) => call.Type === "Sender");
+  const sentSMS = sms.filter((message: any) => message.Type === "Sender");
 
   if (sentCalls.length > 0 && sentCalls[0]["Sender Number"]) {
-    return sentCalls[0]["Sender Number"]
+    return sentCalls[0]["Sender Number"];
   }
   if (sentSMS.length > 0 && sentSMS[0]["Sender Number"]) {
-    return sentSMS[0]["Sender Number"]
+    return sentSMS[0]["Sender Number"];
   }
 
   // Fallback: count occurrences of each phone number
-  const phoneCount: { [key: string]: number } = {}
+  const phoneCount: { [key: string]: number } = {};
 
-  const allItems = [...calls, ...sms]
+  const allItems = [...calls, ...sms];
   allItems.forEach((item: any) => {
     if (item["Sender Number"] && item["Sender Number"].trim()) {
-      const sender = item["Sender Number"].trim()
-      phoneCount[sender] = (phoneCount[sender] || 0) + 1
+      const sender = item["Sender Number"].trim();
+      phoneCount[sender] = (phoneCount[sender] || 0) + 1;
     }
     if (item["Receiver Number"] && item["Receiver Number"].trim()) {
-      const receiver = item["Receiver Number"].trim()
-      phoneCount[receiver] = (phoneCount[receiver] || 0) + 1
+      const receiver = item["Receiver Number"].trim();
+      phoneCount[receiver] = (phoneCount[receiver] || 0) + 1;
     }
-  })
+  });
 
-  const sortedPhones = Object.entries(phoneCount).sort(([, a], [, b]) => b - a)
-  return sortedPhones[0]?.[0] || ""
+  const sortedPhones = Object.entries(phoneCount).sort(([, a], [, b]) => b - a);
+  return sortedPhones[0]?.[0] || "";
 }
 
 // And update the determineCallDirection function to be more robust:
 
-function determineCallDirection(call: any, mainPhoneNumber: string): { contactNumber: string; isOutgoing: boolean } {
-  const sender = call["Sender Number"]?.trim() || ""
-  const receiver = call["Receiver Number"]?.trim() || ""
+function determineCallDirection(
+  call: any,
+  mainPhoneNumber: string,
+): { contactNumber: string; isOutgoing: boolean } {
+  const sender = call["Sender Number"]?.trim() || "";
+  const receiver = call["Receiver Number"]?.trim() || "";
 
   if (!mainPhoneNumber) {
-    return { contactNumber: receiver || sender, isOutgoing: true }
+    return { contactNumber: receiver || sender, isOutgoing: true };
   }
 
   // Use the Type field if available (from our parsing logic)
   if (call.Type === "Sender") {
-    return { contactNumber: receiver, isOutgoing: true }
+    return { contactNumber: receiver, isOutgoing: true };
   } else if (call.Type === "Receiver") {
-    return { contactNumber: sender, isOutgoing: false }
+    return { contactNumber: sender, isOutgoing: false };
   }
 
   // Fallback to phone number comparison
   if (sender === mainPhoneNumber) {
-    return { contactNumber: receiver, isOutgoing: true }
+    return { contactNumber: receiver, isOutgoing: true };
   } else if (receiver === mainPhoneNumber) {
-    return { contactNumber: sender, isOutgoing: false }
+    return { contactNumber: sender, isOutgoing: false };
   } else {
     // Final fallback - assume outgoing if we can't determine
-    return { contactNumber: receiver || sender, isOutgoing: true }
+    return { contactNumber: receiver || sender, isOutgoing: true };
   }
 }
