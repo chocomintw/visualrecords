@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Tabs, TabsList, TabsContent, TabsTrigger } from "@/components/ui/tabs";
 import { MessageSquare, Users, Wallet } from "lucide-react";
 import CommunicationDashboard from "@/components/communication-dashboard";
@@ -7,6 +8,7 @@ import ContactEditor from "@/components/contact-editor";
 import { BankAnalyzer } from "@/components/bank-analyzer";
 
 export default function Home() {
+  const [activeTab, setActiveTab] = useState("communication");
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8 max-w-[1600px]">
@@ -14,7 +16,11 @@ export default function Home() {
           <h1 className="text-2xl font-bold tracking-tight">visualrecords</h1>
         </div>
 
-        <Tabs defaultValue="communication" className="w-full space-y-8">
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="w-full space-y-8"
+        >
           <TabsList className="grid w-full max-w-md grid-cols-3 h-12 p-1 bg-muted/50 rounded-xl border border-border/50">
             <TabsTrigger
               value="communication"
@@ -39,17 +45,26 @@ export default function Home() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="communication" className="outline-none">
-            <CommunicationDashboard />
-          </TabsContent>
+          {/* ⚡ Bolt: Conditionally render tab content to improve initial load performance. */}
+          {/* Only the active tab's content is mounted, avoiding expensive rendering */}
+          {/* for hidden tabs. */}
+          {activeTab === "communication" && (
+            <TabsContent value="communication" className="outline-none">
+              <CommunicationDashboard />
+            </TabsContent>
+          )}
 
-          <TabsContent value="contacts" className="outline-none">
-            <ContactEditor />
-          </TabsContent>
+          {activeTab === "contacts" && (
+            <TabsContent value="contacts" className="outline-none">
+              <ContactEditor />
+            </TabsContent>
+          )}
 
-          <TabsContent value="bank" className="outline-none">
-            <BankAnalyzer />
-          </TabsContent>
+          {activeTab === "bank" && (
+            <TabsContent value="bank" className="outline-none">
+              <BankAnalyzer />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </div>
