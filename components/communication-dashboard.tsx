@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import FileUpload from "@/components/file-upload";
 import DataVisualization from "@/components/data-visualization";
 import DataTable from "@/components/data-table";
@@ -20,6 +21,7 @@ import { useAppStore } from "@/lib/store";
 
 export default function CommunicationDashboard() {
   const { parsedData, isLoading, error, handleFilesUpload } = useAppStore();
+  const [activeTab, setActiveTab] = useState("visualization");
 
   const hasData = parsedData.sms.length > 0 || parsedData.calls.length > 0;
 
@@ -86,7 +88,11 @@ export default function CommunicationDashboard() {
             </div>
           </div>
 
-          <Tabs defaultValue="visualization" className="w-full">
+          <Tabs
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="w-full"
+          >
             <TabsList className="grid w-full grid-cols-3 max-w-3xl mx-auto h-12 p-1 bg-muted/50 rounded-xl border border-border/50">
               <TabsTrigger
                 value="visualization"
@@ -111,17 +117,23 @@ export default function CommunicationDashboard() {
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="visualization" className="mt-8">
-              <DataVisualization />
-            </TabsContent>
+            {activeTab === "visualization" && (
+              <TabsContent value="visualization" className="mt-8">
+                <DataVisualization />
+              </TabsContent>
+            )}
 
-            <TabsContent value="table" className="mt-8">
-              <DataTable />
-            </TabsContent>
+            {activeTab === "table" && (
+              <TabsContent value="table" className="mt-8">
+                <DataTable />
+              </TabsContent>
+            )}
 
-            <TabsContent value="explorer" className="mt-8">
-              <ConversationExplorer />
-            </TabsContent>
+            {activeTab === "explorer" && (
+              <TabsContent value="explorer" className="mt-8">
+                <ConversationExplorer />
+              </TabsContent>
+            )}
           </Tabs>
         </div>
       )}
