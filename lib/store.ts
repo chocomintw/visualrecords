@@ -2,6 +2,7 @@ import { create } from "zustand"
 import type { UploadedFiles, ParsedData, Contact } from "@/types"
 import { processBankData, processCommunicationData, BankStats, CommunicationStats } from "@/lib/analytics"
 import { parseFile, validateSMSData, validateCallData, validateContactData, parseBankData } from "@/lib/utils"
+import { sanitizeHTML } from "@/lib/sentinel"
 
 interface AppState {
   // Current state
@@ -142,6 +143,10 @@ export const useAppStore = create<AppState>((set, get) => ({
           for (const file of files.bank) {
             // Use specific bank parser
             const bankData = await parseBankData(file)
+            for (const record of bankData) {
+              record.from = sanitizeHTML(record.from)
+              record.reason = sanitizeHTML(record.reason)
+            }
             allBankData.push(...bankData)
           }
           newData.bank = allBankData
