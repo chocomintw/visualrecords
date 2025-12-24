@@ -2,18 +2,22 @@ import { create } from "zustand"
 import type { UploadedFiles, ParsedData, Contact } from "@/types"
 import { processBankData, processCommunicationData, BankStats, CommunicationStats } from "@/lib/analytics"
 import { parseFile, validateSMSData, validateCallData, validateContactData, parseBankData } from "@/lib/utils"
-import { decodeHTML } from "./sentinel"
+import { sanitizeHTML } from "./sentinel"
 
-// 🛡️ Sentinel: Helper function to normalize all parts of the parsed data
-// We decode HTML entities here to ensure the data is stored in its plain text form
-// React will handle the escaping when rendering to prevent XSS
-const normalizeParsedData = (data: ParsedData): ParsedData => {
+/**
+ * 🛡️ Sentinel: Helper function to sanitize all parts of the parsed data.
+ *
+ * This function iterates over the data and applies HTML sanitization to prevent
+ * Stored XSS vulnerabilities. By cleaning the data on ingestion, we ensure that
+ * any malicious scripts are neutralized before they are stored in the application state.
+ */
+const sanitizeParsedData = (data: ParsedData): ParsedData => {
   return {
     ...data,
-    sms: data.sms.map((item) => ({ ...item, "Message Body": decodeHTML(item["Message Body"]) })),
-    calls: data.calls.map((item) => ({ ...item, "Call Info": decodeHTML(item["Call Info"]) })),
-    contacts: data.contacts.map((item) => ({ ...item, "Contact Name": decodeHTML(item["Contact Name"]) })),
-    bank: data.bank.map((item) => ({ ...item, from: decodeHTML(item.from), reason: decodeHTML(item.reason) })),
+    sms: data.sms.map((item) => ({ ...item, "Message Body": sanitizeHTML(item["Message Body"]) })),
+    calls: data.calls.map((item) => ({ ...item, "Call Info": sanitizeHTML(item["Call Info"]) })),
+    contacts: data.contacts.map((item) => ({ ...item, "Contact Name": sanitizeHTML(item["Contact Name"]) })),
+    bank: data.bank.map((item) => ({ ...item, from: sanitizeHTML(item.from), reason: sanitizeHTML(item.reason) })),
   }
 }
 
@@ -156,10 +160,6 @@ export const useAppStore = create<AppState>((set, get) => ({
           for (const file of files.bank) {
             // Use specific bank parser
             const bankData = await parseBankData(file)
-            for (const record of bankData) {
-              record.from = decodeHTML(record.from)
-              record.reason = decodeHTML(record.reason)
-            }
             allBankData.push(...bankData)
           }
           newData.bank = allBankData
@@ -194,8 +194,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         return
       }
 
-      // 🛡️ Sentinel: Normalize all data before storing
-      const sanitizedData = normalizeParsedData(newData)
+      // 🛡️ Sentinel: Sanitize all data before storing to prevent XSS
+      const sanitizedData = sanitizeParsedData(newData)
 
       // Process stats immediately
       const bankStats = sanitizedData.bank.length > 0 ? processBankData(sanitizedData.bank) : null
@@ -219,8 +219,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     try {
       set({ isLoading: true, error: "" })
 
-      // 🛡️ Sentinel: Normalize all data loaded from a session
-      const sanitizedData = normalizeParsedData(data)
+      // 🛡️ Sentinel: Sanitize all data loaded from a session to prevent XSS
+      const sanitizedData = sanitizeParsedData(data)
 
       // Process stats immediately
       const bankStats = sanitizedData.bank.length > 0 ? processBankData(sanitizedData.bank) : null
