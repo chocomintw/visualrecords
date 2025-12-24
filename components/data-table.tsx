@@ -20,18 +20,28 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Phone, MessageSquare, Users, UserX, Calendar } from "lucide-react";
 import { useAppStore } from "@/lib/store";
+import { useMemo } from "react";
 
 export default function DataTable() {
   const { parsedData } = useAppStore();
   const { sms, calls, contacts } = parsedData;
 
-  // Process data for tables
-  const dailyActivity = processDailyActivity(sms, calls);
-  const contactInteractions = processContactInteractions(sms, calls, contacts);
-  const unknownNumberInteractions = processUnknownNumberInteractions(
-    sms,
-    calls,
-    contacts,
+  // ⚡ Bolt: Memoize the results of these expensive data processing functions.
+  // By using useMemo, we ensure that these functions are only re-run when the
+  // underlying data (sms, calls, contacts) actually changes. This prevents
+  // unnecessary re-calculations on every render, significantly improving the
+  // performance of the DataTable component, especially with large datasets.
+  const dailyActivity = useMemo(
+    () => processDailyActivity(sms, calls),
+    [sms, calls],
+  );
+  const contactInteractions = useMemo(
+    () => processContactInteractions(sms, calls, contacts),
+    [sms, calls, contacts],
+  );
+  const unknownNumberInteractions = useMemo(
+    () => processUnknownNumberInteractions(sms, calls, contacts),
+    [sms, calls, contacts],
   );
 
   return (
