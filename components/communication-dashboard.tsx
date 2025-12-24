@@ -17,12 +17,12 @@ import {
   MessageSquare,
   TrendingUp,
 } from "lucide-react";
+import { useState } from "react";
 import { useAppStore } from "@/lib/store";
 
 export default function CommunicationDashboard() {
   const { parsedData, isLoading, error, handleFilesUpload } = useAppStore();
   const [activeTab, setActiveTab] = useState("visualization");
-
   const hasData = parsedData.sms.length > 0 || parsedData.calls.length > 0;
 
   return (
@@ -117,19 +117,21 @@ export default function CommunicationDashboard() {
               </TabsTrigger>
             </TabsList>
 
-            {/* ⚡ Bolt: Conditionally render tab content to improve performance. */}
+            {/* ⚡ Bolt: Conditionally render tab content to improve initial load performance. */}
             {/* Only the active tab's content is mounted, avoiding expensive rendering */}
-            {/* for the other two components, which can be costly. */}
+            {/* for hidden tabs. */}
             {activeTab === "visualization" && (
               <TabsContent value="visualization" className="mt-8">
                 <DataVisualization />
               </TabsContent>
             )}
+
             {activeTab === "table" && (
               <TabsContent value="table" className="mt-8">
                 <DataTable />
               </TabsContent>
             )}
+
             {activeTab === "explorer" && (
               <TabsContent value="explorer" className="mt-8">
                 <ConversationExplorer />
