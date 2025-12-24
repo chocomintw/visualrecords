@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import FileUpload from "@/components/file-upload";
 import DataVisualization from "@/components/data-visualization";
 import DataTable from "@/components/data-table";
