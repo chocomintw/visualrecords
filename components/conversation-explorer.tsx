@@ -26,7 +26,8 @@ import {
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useAppStore } from "@/lib/store";
-import { sanitizeHTML } from "@/lib/sentinel";
+
+
 
 interface ConversationMessage {
   "SMS #"?: string;
@@ -344,8 +345,8 @@ export default function ConversationExplorer() {
 
       const messagesToExport = isSelectionMode
         ? currentConversation.messages.filter((_, idx) =>
-            selectedMessages.has(idx),
-          )
+          selectedMessages.has(idx),
+        )
         : currentConversation.messages;
 
       const messageElements = document.querySelectorAll("[data-message-index]");
@@ -402,7 +403,7 @@ export default function ConversationExplorer() {
           {/* Text content (if any text besides the image links) */}
           {content.replace(imgurRegex, "").trim() && (
             <p className="text-sm">
-              {sanitizeHTML(content.replace(imgurRegex, "").trim())}
+              {content.replace(imgurRegex, "").trim()}
             </p>
           )}
 
@@ -447,7 +448,7 @@ export default function ConversationExplorer() {
     }
 
     // Regular text message
-    return <p className="text-sm">{sanitizeHTML(content)}</p>;
+    return <p className="text-sm">{content}</p>;
   };
 
   return (
@@ -510,12 +511,11 @@ export default function ConversationExplorer() {
                 {filteredConversations.map((conversation) => (
                   <div
                     key={conversation.conversationKey}
-                    className={`p-3 rounded-lg cursor-pointer transition-colors ${
-                      currentConversation?.conversationKey ===
+                    className={`p-3 rounded-lg cursor-pointer transition-colors ${currentConversation?.conversationKey ===
                       conversation.conversationKey
-                        ? "bg-muted"
-                        : "hover:bg-muted/50"
-                    }`}
+                      ? "bg-muted"
+                      : "hover:bg-muted/50"
+                      }`}
                     onClick={() =>
                       setSelectedConversation(conversation.conversationKey)
                     }
@@ -542,16 +542,16 @@ export default function ConversationExplorer() {
                               conversation.messages.length - 1
                             ]?.isSMS
                               ? (() => {
-                                  const lastMessage =
-                                    conversation.messages[
-                                      conversation.messages.length - 1
-                                    ]["Message Body"] || "Message";
-                                  const hasImgur =
-                                    lastMessage.includes("i.imgur.com");
-                                  return hasImgur
-                                    ? "📷 Image"
-                                    : sanitizeHTML(lastMessage);
-                                })()
+                                const lastMessage =
+                                  conversation.messages[
+                                  conversation.messages.length - 1
+                                  ]["Message Body"] || "Message";
+                                const hasImgur =
+                                  lastMessage.includes("i.imgur.com");
+                                return hasImgur
+                                  ? "📷 Image"
+                                  : lastMessage;
+                              })()
                               : "Call"}
                           </p>
                         </div>
@@ -673,11 +673,10 @@ export default function ConversationExplorer() {
                       {/* Timeline indicator */}
                       <div className="flex flex-col items-center shrink-0">
                         <div
-                          className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                            message.isSMS
-                              ? "bg-purple-100 text-purple-600"
-                              : "bg-green-100 text-green-600"
-                          }`}
+                          className={`w-8 h-8 rounded-full flex items-center justify-center ${message.isSMS
+                            ? "bg-purple-100 text-purple-600"
+                            : "bg-green-100 text-green-600"
+                            }`}
                         >
                           {message.isSMS ? (
                             <MessageSquare className="h-4 w-4" />
@@ -693,13 +692,12 @@ export default function ConversationExplorer() {
                       {/* Message content */}
                       <div className="flex-1 pb-2">
                         <div
-                          className={`bg-muted/50 rounded-lg p-3 border transition-all relative ${
-                            isSelectionMode
-                              ? selectedMessages.has(index)
-                                ? "border-primary bg-primary/5 shadow-sm"
-                                : "hover:border-primary/50 cursor-pointer"
-                              : ""
-                          }`}
+                          className={`bg-muted/50 rounded-lg p-3 border transition-all relative ${isSelectionMode
+                            ? selectedMessages.has(index)
+                              ? "border-primary bg-primary/5 shadow-sm"
+                              : "hover:border-primary/50 cursor-pointer"
+                            : ""
+                            }`}
                           onClick={() =>
                             isSelectionMode && toggleMessageSelection(index)
                           }
@@ -727,11 +725,10 @@ export default function ConversationExplorer() {
                               {message.isSMS && (
                                 <Badge
                                   variant="secondary"
-                                  className={`text-xs ${
-                                    message["Sender Number"] === mainPhoneNumber
-                                      ? "bg-green-100 text-green-700 border-green-200"
-                                      : "bg-blue-100 text-blue-700 border-blue-200"
-                                  }`}
+                                  className={`text-xs ${message["Sender Number"] === mainPhoneNumber
+                                    ? "bg-green-100 text-green-700 border-green-200"
+                                    : "bg-blue-100 text-blue-700 border-blue-200"
+                                    }`}
                                 >
                                   {message["Sender Number"] === mainPhoneNumber
                                     ? "Sender"

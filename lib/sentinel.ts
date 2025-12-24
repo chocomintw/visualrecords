@@ -30,6 +30,20 @@ const htmlEscapes: { [key: string]: string } = {
 };
 
 /**
+ * A mapping of HTML entities to their original characters.
+ * Used for decoding content that was previously escaped.
+ */
+const htmlUnescapes: { [key: string]: string } = {
+  "&amp;": "&",
+  "&lt;": "<",
+  "&gt;": ">",
+  "&quot;": '"',
+  "&#39;": "'",
+  "&#x27;": "'",
+  "&#x2F;": "/",
+};
+
+/**
  * A regular expression to match the characters that need to be escaped.
  *
  * This regex is constructed from the keys of the `htmlEscapes` map, ensuring that
@@ -38,6 +52,11 @@ const htmlEscapes: { [key: string]: string } = {
  * @constant
  */
 const escapeRegex = new RegExp(`[${Object.keys(htmlEscapes).join("")}]`, "g");
+
+/**
+ * A regular expression to match HTML entities that need to be unescaped.
+ */
+const unescapeRegex = /&(?:amp|lt|gt|quot|#39|#x27|#x2F);/g;
 
 /**
  * Sanitizes a string by escaping HTML characters to prevent XSS attacks.
@@ -54,4 +73,20 @@ export const sanitizeHTML = (text: string | unknown): string => {
     return "";
   }
   return text.replace(escapeRegex, (match) => htmlEscapes[match]);
+};
+
+/**
+ * Decodes a string by unescaping common HTML entities.
+ *
+ * This function takes a string as input and replaces HTML entities
+ * with their corresponding characters. Useful for normalizing data.
+ *
+ * @param {string | unknown} text The input string to decode.
+ * @returns {string} The decoded string.
+ */
+export const decodeHTML = (text: string | unknown): string => {
+  if (typeof text !== "string") {
+    return "";
+  }
+  return text.replace(unescapeRegex, (match) => htmlUnescapes[match] || match);
 };

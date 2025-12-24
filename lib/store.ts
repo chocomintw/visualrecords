@@ -2,16 +2,18 @@ import { create } from "zustand"
 import type { UploadedFiles, ParsedData, Contact } from "@/types"
 import { processBankData, processCommunicationData, BankStats, CommunicationStats } from "@/lib/analytics"
 import { parseFile, validateSMSData, validateCallData, validateContactData, parseBankData } from "@/lib/utils"
-import { sanitizeHTML } from "./sentinel"
+import { decodeHTML } from "./sentinel"
 
-// 🛡️ Sentinel: Helper function to sanitize all parts of the parsed data
-const sanitizeParsedData = (data: ParsedData): ParsedData => {
+// 🛡️ Sentinel: Helper function to normalize all parts of the parsed data
+// We decode HTML entities here to ensure the data is stored in its plain text form
+// React will handle the escaping when rendering to prevent XSS
+const normalizeParsedData = (data: ParsedData): ParsedData => {
   return {
     ...data,
-    sms: data.sms.map((item) => ({ ...item, "Message Body": sanitizeHTML(item["Message Body"]) })),
-    calls: data.calls.map((item) => ({ ...item, "Call Info": sanitizeHTML(item["Call Info"]) })),
-    contacts: data.contacts.map((item) => ({ ...item, "Contact Name": sanitizeHTML(item["Contact Name"]) })),
-    bank: data.bank.map((item) => ({ ...item, from: sanitizeHTML(item.from), reason: sanitizeHTML(item.reason) })),
+    sms: data.sms.map((item) => ({ ...item, "Message Body": decodeHTML(item["Message Body"]) })),
+    calls: data.calls.map((item) => ({ ...item, "Call Info": decodeHTML(item["Call Info"]) })),
+    contacts: data.contacts.map((item) => ({ ...item, "Contact Name": decodeHTML(item["Contact Name"]) })),
+    bank: data.bank.map((item) => ({ ...item, from: decodeHTML(item.from), reason: decodeHTML(item.reason) })),
   }
 }
 
@@ -155,8 +157,8 @@ export const useAppStore = create<AppState>((set, get) => ({
             // Use specific bank parser
             const bankData = await parseBankData(file)
             for (const record of bankData) {
-              record.from = sanitizeHTML(record.from)
-              record.reason = sanitizeHTML(record.reason)
+              record.from = decodeHTML(record.from)
+              record.reason = decodeHTML(record.reason)
             }
             allBankData.push(...bankData)
           }
@@ -192,8 +194,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         return
       }
 
-      // 🛡️ Sentinel: Sanitize all data before storing to prevent XSS
-      const sanitizedData = sanitizeParsedData(newData)
+      // 🛡️ Sentinel: Normalize all data before storing
+      const sanitizedData = normalizeParsedData(newData)
 
       // Process stats immediately
       const bankStats = sanitizedData.bank.length > 0 ? processBankData(sanitizedData.bank) : null
@@ -217,8 +219,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     try {
       set({ isLoading: true, error: "" })
 
-      // 🛡️ Sentinel: Sanitize all data loaded from a session to prevent XSS
-      const sanitizedData = sanitizeParsedData(data)
+      // 🛡️ Sentinel: Normalize all data loaded from a session
+      const sanitizedData = normalizeParsedData(data)
 
       // Process stats immediately
       const bankStats = sanitizedData.bank.length > 0 ? processBankData(sanitizedData.bank) : null
