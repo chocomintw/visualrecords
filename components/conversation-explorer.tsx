@@ -392,18 +392,18 @@ export default function ConversationExplorer() {
   const renderMessageContent = (message: ConversationMessage) => {
     const content = message["Message Body"] || "";
 
-    // Check if message contains Imgur links
-    const imgurRegex =
-      /(https?:\/\/i\.imgur\.com\/[a-zA-Z0-9]+\.(?:jpg|jpeg|png|gif))/gi;
-    const matches = content.match(imgurRegex);
+    // Check if message contains Image links (Imgur or Ibb.co)
+    const imageRegex =
+      /(https?:\/\/(?:i\.imgur\.com\/[a-zA-Z0-9]+\.(?:jpg|jpeg|png|gif)|i\.ibb\.co\/[a-zA-Z0-9]+\/[a-zA-Z0-9-]+\.(?:jpg|jpeg|png|gif)))/gi;
+    const matches = content.match(imageRegex);
 
     if (matches && matches.length > 0) {
       return (
         <div className="space-y-2">
           {/* Text content (if any text besides the image links) */}
-          {content.replace(imgurRegex, "").trim() && (
+          {content.replace(imageRegex, "").trim() && (
             <p className="text-sm">
-              {content.replace(imgurRegex, "").trim()}
+              {content.replace(imageRegex, "").trim()}
             </p>
           )}
 
@@ -546,9 +546,10 @@ export default function ConversationExplorer() {
                                   conversation.messages[
                                   conversation.messages.length - 1
                                   ]["Message Body"] || "Message";
-                                const hasImgur =
-                                  lastMessage.includes("i.imgur.com");
-                                return hasImgur
+                                const hasImage =
+                                  lastMessage.includes("i.imgur.com") ||
+                                  lastMessage.includes("i.ibb.co");
+                                return hasImage
                                   ? "📷 Image"
                                   : lastMessage;
                               })()
