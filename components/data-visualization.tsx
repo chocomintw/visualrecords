@@ -24,9 +24,8 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { useAppStore } from "@/lib/store";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Phone, MessageSquare, User, UserX } from "lucide-react";
+import { Phone } from "lucide-react";
 import { useState, useMemo } from "react";
 
 interface CallConversation {

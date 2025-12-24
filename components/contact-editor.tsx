@@ -34,7 +34,6 @@ import {
   Trash2,
   Edit,
   FileDigit,
-  Save,
   ChevronLeft,
   ChevronRight,
   FileText,

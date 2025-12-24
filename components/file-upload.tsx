@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback } from "react";
 import type { UploadedFiles } from "@/types";
 import {
   Card,
@@ -186,7 +186,7 @@ export default function FileUpload({
                           className="flex items-center justify-between p-2.5 border border-border/50 rounded-md text-sm bg-card hover:bg-muted/50 transition-colors"
                         >
                           <div className="flex items-center gap-2 min-w-0 flex-1">
-                            <FileText className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
+                            <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                             <span
                               className="truncate text-xs font-medium"
                               title={file.name}
@@ -200,7 +200,7 @@ export default function FileUpload({
                             size="icon"
                             onClick={() => removeFile(type, index)}
                             disabled={isLoading}
-                            className="h-6 w-6 flex-shrink-0 ml-2 hover:bg-destructive/10 hover:text-destructive"
+                            className="h-6 w-6 shrink-0 ml-2 hover:bg-destructive/10 hover:text-destructive"
                           >
                             <X className="h-3 w-3" />
                           </Button>

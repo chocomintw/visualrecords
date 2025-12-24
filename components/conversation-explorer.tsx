@@ -10,7 +10,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import {
   Search,
@@ -520,16 +520,16 @@ export default function ConversationExplorer() {
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-start gap-2 min-w-0 flex-1">
                         {conversation.hasUnknownParticipants ? (
-                          <UserX className="h-4 w-4 text-orange-500 flex-shrink-0 mt-0.5" />
+                          <UserX className="h-4 w-4 text-orange-500 shrink-0 mt-0.5" />
                         ) : (
-                          <Users className="h-4 w-4 text-blue-500 flex-shrink-0 mt-0.5" />
+                          <Users className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
                         )}
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5 mb-1">
                             <p className="font-medium text-sm truncate">
                               {conversation.participant1Display}
                             </p>
-                            <ArrowLeftRight className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                            <ArrowLeftRight className="h-3 w-3 text-muted-foreground shrink-0" />
                             <p className="font-medium text-sm truncate">
                               {conversation.participant2Display}
                             </p>
@@ -551,7 +551,7 @@ export default function ConversationExplorer() {
                           </p>
                         </div>
                       </div>
-                      <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                      <div className="flex flex-col items-end gap-1 shrink-0">
                         <div className="flex gap-1">
                           {conversation.messageCount > 0 && (
                             <Badge variant="secondary" className="h-5 text-xs">
@@ -666,7 +666,7 @@ export default function ConversationExplorer() {
                       data-message-index={index}
                     >
                       {/* Timeline indicator */}
-                      <div className="flex flex-col items-center flex-shrink-0">
+                      <div className="flex flex-col items-center shrink-0">
                         <div
                           className={`w-8 h-8 rounded-full flex items-center justify-center ${
                             message.isSMS
