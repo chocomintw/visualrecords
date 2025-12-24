@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useAppStore } from "@/lib/store";
+import { sanitizeHTML } from "@/lib/sentinel";
 
 interface ConversationMessage {
   "SMS #"?: string;
@@ -400,7 +401,9 @@ export default function ConversationExplorer() {
         <div className="space-y-2">
           {/* Text content (if any text besides the image links) */}
           {content.replace(imgurRegex, "").trim() && (
-            <p className="text-sm">{content.replace(imgurRegex, "").trim()}</p>
+            <p className="text-sm">
+              {sanitizeHTML(content.replace(imgurRegex, "").trim())}
+            </p>
           )}
 
           {/* Embedded images */}
@@ -444,7 +447,7 @@ export default function ConversationExplorer() {
     }
 
     // Regular text message
-    return <p className="text-sm">{content}</p>;
+    return <p className="text-sm">{sanitizeHTML(content)}</p>;
   };
 
   return (
@@ -545,7 +548,9 @@ export default function ConversationExplorer() {
                                     ]["Message Body"] || "Message";
                                   const hasImgur =
                                     lastMessage.includes("i.imgur.com");
-                                  return hasImgur ? "📷 Image" : lastMessage;
+                                  return hasImgur
+                                    ? "📷 Image"
+                                    : sanitizeHTML(lastMessage);
                                 })()
                               : "Call"}
                           </p>

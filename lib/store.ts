@@ -3,6 +3,18 @@ import type { UploadedFiles, ParsedData, Contact } from "@/types"
 import { processBankData, processCommunicationData, BankStats, CommunicationStats } from "@/lib/analytics"
 import { parseFile, validateSMSData, validateCallData, validateContactData, parseBankData } from "@/lib/utils"
 import { sanitizeHTML } from "@/lib/sentinel"
+import { sanitizeHTML } from "./sentinel"
+
+// 🛡️ Sentinel: Helper function to sanitize all parts of the parsed data
+const sanitizeParsedData = (data: ParsedData): ParsedData => {
+  return {
+    ...data,
+    sms: data.sms.map((item) => ({ ...item, "Message Body": sanitizeHTML(item["Message Body"]) })),
+    calls: data.calls.map((item) => ({ ...item, "Call Info": sanitizeHTML(item["Call Info"]) })),
+    contacts: data.contacts.map((item) => ({ ...item, "Contact Name": sanitizeHTML(item["Contact Name"]) })),
+    bank: data.bank.map((item) => ({ ...item, from: sanitizeHTML(item.from), reason: sanitizeHTML(item.reason) })),
+  }
+}
 
 interface AppState {
   // Current state
@@ -181,12 +193,15 @@ export const useAppStore = create<AppState>((set, get) => ({
         return
       }
 
+      // 🛡️ Sentinel: Sanitize all data before storing to prevent XSS
+      const sanitizedData = sanitizeParsedData(newData)
+
       // Process stats immediately
-      const bankStats = newData.bank.length > 0 ? processBankData(newData.bank) : null
-      const communicationStats = processCommunicationData(newData)
+      const bankStats = sanitizedData.bank.length > 0 ? processBankData(sanitizedData.bank) : null
+      const communicationStats = processCommunicationData(sanitizedData)
 
       set({
-        parsedData: newData,
+        parsedData: sanitizedData,
         bankStats,
         communicationStats
       })
@@ -203,12 +218,15 @@ export const useAppStore = create<AppState>((set, get) => ({
     try {
       set({ isLoading: true, error: "" })
 
+      // 🛡️ Sentinel: Sanitize all data loaded from a session to prevent XSS
+      const sanitizedData = sanitizeParsedData(data)
+
       // Process stats immediately
-      const bankStats = data.bank.length > 0 ? processBankData(data.bank) : null
-      const communicationStats = processCommunicationData(data)
+      const bankStats = sanitizedData.bank.length > 0 ? processBankData(sanitizedData.bank) : null
+      const communicationStats = processCommunicationData(sanitizedData)
 
       set({
-        parsedData: data,
+        parsedData: sanitizedData,
         bankStats,
         communicationStats,
         isLoading: false
