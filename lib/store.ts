@@ -2,7 +2,6 @@ import { create } from "zustand"
 import type { UploadedFiles, ParsedData, Contact } from "@/types"
 import { processBankData, processCommunicationData, BankStats, CommunicationStats } from "@/lib/analytics"
 import { parseFile, validateSMSData, validateCallData, validateContactData, parseBankData } from "@/lib/utils"
-import { sanitizeHTML } from "@/lib/sentinel"
 import { sanitizeHTML } from "./sentinel"
 
 // 🛡️ Sentinel: Helper function to sanitize all parts of the parsed data

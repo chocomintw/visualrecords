@@ -43,36 +43,15 @@ const escapeRegex = new RegExp(`[${Object.keys(htmlEscapes).join("")}]`, "g");
  * Sanitizes a string by escaping HTML characters to prevent XSS attacks.
  *
  * This function takes a string as input and replaces any potentially dangerous
- * characters with their corresponding HTML entities. This ensures that when the
- * string is rendered in the browser, it is treated as plain text rather than
- * executable code.
+ * characters with their corresponding HTML entities. If the input is not a string,
+ * it returns an empty string.
  *
- * @param {string} text The input string to sanitize.
+ * @param {string | unknown} text The input string to sanitize.
  * @returns {string} The sanitized string with HTML characters escaped.
  */
-export const sanitizeHTML = (text: string): string => {
-  if (!text) {
+export const sanitizeHTML = (text: string | unknown): string => {
+  if (typeof text !== "string") {
     return "";
   }
   return text.replace(escapeRegex, (match) => htmlEscapes[match]);
 };
-// 🛡️ Sentinel: centralized sanitization utility
-// This utility is crucial for preventing XSS attacks by ensuring that any potentially malicious user-provided content is cleaned before being rendered in the application.
-
-/**
- * Sanitizes a string to prevent XSS attacks.
- * It replaces special characters with their corresponding HTML entities.
- *
- * @param str The input string to sanitize.
- * @returns The sanitized string.
- */
-export function sanitizeHTML(str: string | unknown): string {
-  if (typeof str !== "string") return "";
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#x27;")
-    .replace(/\//g, "&#x2F;");
-}
