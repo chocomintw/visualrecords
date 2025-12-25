@@ -7,17 +7,6 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-// Function to sanitize string and prevent XSS
-function sanitize(str: string): string {
-  if (!str) return ""
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#x27;")
-    .replace(/\//g, "&#x2F;")
-}
 
 // Helper function to create a unique ID for deduplication
 function createMessageId(item: any): string {
@@ -491,7 +480,7 @@ export function validateSMSData(data: any[]): SMS[] {
     const smsId = String(item["SMS #"] || item["SMS"] || item["SMS #"] || "")
     const sender = String(item["Sender Number"] || item["Sender"] || item["__EMPTY"] || "")
     const receiver = String(item["Receiver Number"] || item["Target Number"] || item["Receiver"] || item["__EMPTY_1"] || "")
-    const message = sanitize(String(item["Message Body"] || item["Message"] || item["__EMPTY_2"] || ""))
+    const message = String(item["Message Body"] || item["Message"] || item["__EMPTY_2"] || "")
     const timestamp = String(item["Timestamp"] || item["Date"] || item["__EMPTY_4"] || "")
 
     // Skip if this looks like a header row (contains header text)
@@ -563,7 +552,7 @@ export function validateCallData(data: any[]): CallLog[] {
     const callId = String(item["Call #"] || item["Call"] || item["Call #"] || "")
     const sender = String(item["Sender Number"] || item["Sender"] || item["__EMPTY"] || "")
     const receiver = String(item["Receiver Number"] || item["Target Number"] || item["Receiver"] || item["__EMPTY_1"] || "")
-    const callInfo = sanitize(String(item["Call Info"] || item["Info"] || item["__EMPTY_2"] || ""))
+    const callInfo = String(item["Call Info"] || item["Info"] || item["__EMPTY_2"] || "")
     const timestamp = String(item["Timestamp"] || item["Date"] || item["__EMPTY_4"] || "")
 
     // Skip if this looks like a header row (contains header text)
@@ -627,7 +616,7 @@ export function validateContactData(data: any[]): Contact[] {
 
   for (const item of data) {
     // Handle both old and new column names
-    const name = sanitize(String(item["Contact Name"] || item["Name"] || ""))
+    const name = String(item["Contact Name"] || item["Name"] || "")
     const phone = String(item["Phone Number"] || item["Phone"] || item["Number"] || "")
 
     // Skip if this looks like a header row (contains header text)
@@ -759,9 +748,9 @@ export async function parseBankData(file: File): Promise<any[]> {
 
           return {
             id: String(index),
-            from: sanitize(String(item["From"] || "")),
+            from: String(item["From"] || ""),
             routing: String(item["Routing"] || ""),
-            reason: sanitize(String(item["Reason"] || "")),
+            reason: String(item["Reason"] || ""),
             amount: parseFloat(amountStr) || 0,
             balance: parseFloat(balanceStr) || 0,
             date: String(item["Date"] || ""),

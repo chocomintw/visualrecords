@@ -26,7 +26,6 @@ const htmlEscapes: { [key: string]: string } = {
   ">": "&gt;",
   '"': "&quot;",
   "'": "&#39;",
-  "/": "&#x2F;",
 };
 
 /**
@@ -40,7 +39,9 @@ const htmlUnescapes: { [key: string]: string } = {
   "&quot;": '"',
   "&#39;": "'",
   "&#x27;": "'",
-  "&#x2F;": "/",
+  "&#x2f;": "/",
+  "&#47;": "/",
+  "&apos;": "'",
 };
 
 /**
@@ -56,7 +57,7 @@ const escapeRegex = new RegExp(`[${Object.keys(htmlEscapes).join("")}]`, "g");
 /**
  * A regular expression to match HTML entities that need to be unescaped.
  */
-const unescapeRegex = /&(?:amp|lt|gt|quot|#39|#x27|#x2F);/g;
+const unescapeRegex = /&(?:amp|lt|gt|quot|apos|#\d+|#x[0-9a-f]+);/gi;
 
 /**
  * Sanitizes a string by escaping HTML characters to prevent XSS attacks.
@@ -86,7 +87,11 @@ export const sanitizeHTML = (text: string | unknown): string => {
  */
 export const decodeHTML = (text: string | unknown): string => {
   if (typeof text !== "string") {
-    return "";
+    // If not a string, return as is (coerced to string) but avoid turning into ""
+    return text ? String(text) : "";
   }
-  return text.replace(unescapeRegex, (match) => htmlUnescapes[match] || match);
+  return text.replace(unescapeRegex, (match) => {
+    const lowerMatch = match.toLowerCase();
+    return htmlUnescapes[lowerMatch] || match;
+  });
 };
