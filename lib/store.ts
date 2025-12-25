@@ -16,7 +16,11 @@ const sanitizeParsedData = (data: ParsedData): ParsedData => {
     ...data,
     sms: data.sms.map((item) => ({ ...item, "Message Body": sanitizeHTML(item["Message Body"]) })),
     calls: data.calls.map((item) => ({ ...item, "Call Info": sanitizeHTML(item["Call Info"]) })),
-    contacts: data.contacts.map((item) => ({ ...item, "Contact Name": sanitizeHTML(item["Contact Name"]) })),
+    contacts: data.contacts.map((item) => ({
+      ...item,
+      "Contact Name": sanitizeHTML(item["Contact Name"]),
+      "Full Name": sanitizeHTML(item["Full Name"]),
+    })),
     bank: data.bank.map((item) => ({ ...item, from: sanitizeHTML(item.from), reason: sanitizeHTML(item.reason) })),
   }
 }
