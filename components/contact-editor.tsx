@@ -230,7 +230,7 @@ export default function ContactEditor() {
           contacts.push({
             "Contact Name": name,
             "Phone Number": phoneNumber,
-            "Full Name": undefined,
+            "Full Name": "",
           });
         }
       }

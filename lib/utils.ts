@@ -634,7 +634,7 @@ export function validateContactData(data: any[]): Contact[] {
       validated.push({
         "Contact Name": name,
         "Phone Number": phone,
-        "Full Name": undefined
+        "Full Name": String(item["Full Name"] || item["fullName"] || item["Fullname"] || item["Additional Info"] || item["info"] || "")
       })
     }
   }
