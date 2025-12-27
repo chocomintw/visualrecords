@@ -19,7 +19,12 @@ const sanitizeParsedData = (data: ParsedData): ParsedData => {
     contacts: data.contacts.map((item) => ({
       ...item,
       "Contact Name": sanitizeHTML(item["Contact Name"]),
+<<<<<<< HEAD
       "Full Name": item["Full Name"] ? sanitizeHTML(item["Full Name"]) : undefined
+=======
+      // 🛡️ Sentinel: Sanitize the optional "Full Name" field to prevent Stored XSS.
+      "Full Name": item["Full Name"] ? sanitizeHTML(item["Full Name"]) : item["Full Name"],
+>>>>>>> 1be15cf4acb1f88493c9057943bb02e81ac86a8c
     })),
     bank: data.bank.map((item) => ({ ...item, from: sanitizeHTML(item.from), reason: sanitizeHTML(item.reason) })),
   }
