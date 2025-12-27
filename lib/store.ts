@@ -19,7 +19,8 @@ const sanitizeParsedData = (data: ParsedData): ParsedData => {
     contacts: data.contacts.map((item) => ({
       ...item,
       "Contact Name": sanitizeHTML(item["Contact Name"]),
-      "Full Name": sanitizeHTML(item["Full Name"]),
+      // 🛡️ Sentinel: Sanitize the optional "Full Name" field to prevent Stored XSS.
+      "Full Name": item["Full Name"] ? sanitizeHTML(item["Full Name"]) : item["Full Name"],
     })),
     bank: data.bank.map((item) => ({ ...item, from: sanitizeHTML(item.from), reason: sanitizeHTML(item.reason) })),
   }

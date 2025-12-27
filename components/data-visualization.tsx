@@ -51,6 +51,12 @@ export default function DataVisualization() {
     null,
   );
 
+  // ⚡ Bolt: Memoize the contact map to avoid re-computing it on every render.
+  // This is a significant optimization as it prevents an O(n*m) complexity
+  // issue in the enhancedStats calculation below where `createContactMap` was
+  // being called inside a loop.
+  const contactMap = useMemo(() => createContactMap(contacts), [contacts]);
+
   if (!communicationStats) {
     return null;
   }
@@ -75,7 +81,6 @@ export default function DataVisualization() {
 
   // Process call conversations with proper direction guessing
   const callConversations = useMemo(() => {
-    const contactMap = createContactMap(contacts);
     const conversationMap: { [key: string]: CallConversation } = {};
 
     // Process calls into conversations with proper direction
@@ -126,7 +131,7 @@ export default function DataVisualization() {
           new Date(b.lastActivity).getTime() -
           new Date(a.lastActivity).getTime(),
       );
-  }, [calls, contacts, mainPhoneNumber]);
+  }, [calls, contactMap, mainPhoneNumber]);
 
   const selectedCallConversation = selectedCallContact
     ? callConversations.find((c) => c.contactName === selectedCallContact)
@@ -161,13 +166,16 @@ export default function DataVisualization() {
       };
     });
 
+    // ⚡ Bolt: Hoist contactMap out of the loop to prevent re-computation on every iteration.
+    // This significantly improves performance when there are many calls.
+    const contactMap = createContactMap(contacts);
+
     // Add direction breakdown to calls per contact
     const enhancedCallsPerContact = callsPerContact.map((contactStat) => {
       const contactCalls = calls.filter((call: any) => {
         const { contactNumber } = determineCallDirection(call, mainPhoneNumber);
         const contactName =
-          createContactMap(contacts)[contactNumber] ||
-          `Unknown (${contactNumber})`;
+          contactMap[contactNumber] || `Unknown (${contactNumber})`;
         return contactName === contactStat.name;
       });
 
@@ -196,7 +204,7 @@ export default function DataVisualization() {
   }, [
     communicationStats,
     calls,
-    contacts,
+    contactMap,
     mainPhoneNumber,
     callsPerDay,
     callsPerContact,
