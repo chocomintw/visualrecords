@@ -137,62 +137,67 @@ export default function DataVisualization() {
     ? callConversations.find((c) => c.contactName === selectedCallContact)
     : callConversations[0];
 
-  // Enhanced stats with direction information
+  // ⚡ Bolt: Optimize enhancedStats calculation by pre-computing call lookups.
+  // This refactors the original O(N*M) nested loops into a more efficient
+  // O(N+M) single-pass approach, significantly improving performance for
+  // large datasets by avoiding redundant filtering within loops.
   const enhancedStats = useMemo(() => {
     if (!communicationStats) return null;
 
-    // Add outgoing/incoming breakdown to calls per day
+    const callsByDate = new Map<string, { outgoing: number; incoming: number }>();
+    const callsByContactName = new Map<
+      string,
+      { outgoing: number; incoming: number }
+    >();
+
+    // Single pass through calls to populate both lookup maps
+    calls.forEach((call: any) => {
+      const { contactNumber, isOutgoing } = determineCallDirection(
+        call,
+        mainPhoneNumber,
+      );
+      const contactName =
+        contactMap[contactNumber] || `Unknown (${contactNumber})`;
+      const callDate = new Date(call.Timestamp).toDateString();
+
+      // Populate callsByDate
+      if (!callsByDate.has(callDate)) {
+        callsByDate.set(callDate, { outgoing: 0, incoming: 0 });
+      }
+      const dateStats = callsByDate.get(callDate)!;
+      if (isOutgoing) dateStats.outgoing++;
+      else dateStats.incoming++;
+
+      // Populate callsByContactName
+      if (!callsByContactName.has(contactName)) {
+        callsByContactName.set(contactName, { outgoing: 0, incoming: 0 });
+      }
+      const contactStats = callsByContactName.get(contactName)!;
+      if (isOutgoing) contactStats.outgoing++;
+      else contactStats.incoming++;
+    });
+
+    // Efficiently map over callsPerDay using the pre-computed map
     const enhancedCallsPerDay = callsPerDay.map((day) => {
-      const dayCalls = calls.filter((call: any) => {
-        const callDate = new Date(call.Timestamp).toDateString();
-        const statDate = new Date(day.date).toDateString();
-        return callDate === statDate;
-      });
-
-      const outgoing = dayCalls.filter((call: any) => {
-        const { isOutgoing } = determineCallDirection(call, mainPhoneNumber);
-        return isOutgoing;
-      }).length;
-
-      const incoming = dayCalls.filter((call: any) => {
-        const { isOutgoing } = determineCallDirection(call, mainPhoneNumber);
-        return !isOutgoing;
-      }).length;
-
+      const statDate = new Date(day.date).toDateString();
+      const stats = callsByDate.get(statDate) || { outgoing: 0, incoming: 0 };
       return {
         ...day,
-        outgoing,
-        incoming,
+        outgoing: stats.outgoing,
+        incoming: stats.incoming,
       };
     });
 
-    // ⚡ Bolt: Hoist contactMap out of the loop to prevent re-computation on every iteration.
-    // This significantly improves performance when there are many calls.
-    const contactMap = createContactMap(contacts);
-
-    // Add direction breakdown to calls per contact
+    // Efficiently map over callsPerContact using the pre-computed map
     const enhancedCallsPerContact = callsPerContact.map((contactStat) => {
-      const contactCalls = calls.filter((call: any) => {
-        const { contactNumber } = determineCallDirection(call, mainPhoneNumber);
-        const contactName =
-          contactMap[contactNumber] || `Unknown (${contactNumber})`;
-        return contactName === contactStat.name;
-      });
-
-      const outgoing = contactCalls.filter((call: any) => {
-        const { isOutgoing } = determineCallDirection(call, mainPhoneNumber);
-        return isOutgoing;
-      }).length;
-
-      const incoming = contactCalls.filter((call: any) => {
-        const { isOutgoing } = determineCallDirection(call, mainPhoneNumber);
-        return !isOutgoing;
-      }).length;
-
+      const stats = callsByContactName.get(contactStat.name) || {
+        outgoing: 0,
+        incoming: 0,
+      };
       return {
         ...contactStat,
-        outgoing,
-        incoming,
+        outgoing: stats.outgoing,
+        incoming: stats.incoming,
       };
     });
 
