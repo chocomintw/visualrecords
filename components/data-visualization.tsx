@@ -166,10 +166,8 @@ export default function DataVisualization() {
       };
     });
 
-    // ⚡ Bolt: Hoist contactMap out of the loop to prevent re-computation on every iteration.
-    // This significantly improves performance when there are many calls.
-    const contactMap = createContactMap(contacts);
-
+    // ⚡ Bolt: Redundant `createContactMap` call removed. The memoized `contactMap`
+    // from the outer scope is used instead, preventing re-computation on every render.
     // Add direction breakdown to calls per contact
     const enhancedCallsPerContact = callsPerContact.map((contactStat) => {
       const contactCalls = calls.filter((call: any) => {
