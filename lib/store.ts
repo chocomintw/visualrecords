@@ -63,7 +63,13 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setContacts: (contacts) => {
     set((state) => {
-      const newData = { ...state.parsedData, contacts }
+      // 🛡️ Sentinel: Sanitize contacts before updating state to prevent XSS.
+      const sanitizedContacts = contacts.map(c => ({
+        ...c,
+        "Contact Name": sanitizeHTML(c["Contact Name"]),
+        "Full Name": c["Full Name"] ? sanitizeHTML(c["Full Name"]) : c["Full Name"],
+      }));
+      const newData = { ...state.parsedData, contacts: sanitizedContacts }
       return {
         parsedData: newData,
         // Re-process communication stats as they depend on contacts
