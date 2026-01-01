@@ -141,54 +141,63 @@ export default function DataVisualization() {
   const enhancedStats = useMemo(() => {
     if (!communicationStats) return null;
 
-    // Add outgoing/incoming breakdown to calls per day
+    // ⚡ Bolt: Optimize directional stats calculation.
+    // By creating lookup maps for calls by date and contact, we reduce the
+    // complexity from O(n*m) to O(n+m), avoiding nested loops. This provides a
+    // significant performance boost for large datasets.
+
+    // 1. Create lookup maps in a single pass over the calls data.
+    const callsByDate: { [key: string]: { outgoing: number; incoming: number } } = {};
+    const callsByContact: { [key: string]: { outgoing: number; incoming: number } } = {};
+
+    calls.forEach((call: any) => {
+      const { contactNumber, isOutgoing } = determineCallDirection(
+        call,
+        mainPhoneNumber,
+      );
+
+      // Populate callsByDate map
+      const callDate = new Date(call.Timestamp).toDateString();
+      if (!callsByDate[callDate]) {
+        callsByDate[callDate] = { outgoing: 0, incoming: 0 };
+      }
+      if (isOutgoing) {
+        callsByDate[callDate].outgoing++;
+      } else {
+        callsByDate[callDate].incoming++;
+      }
+
+      // Populate callsByContact map
+      const contactName =
+        contactMap[contactNumber] || `Unknown (${contactNumber})`;
+      if (!callsByContact[contactName]) {
+        callsByContact[contactName] = { outgoing: 0, incoming: 0 };
+      }
+      if (isOutgoing) {
+        callsByContact[contactName].outgoing++;
+      } else {
+        callsByContact[contactName].incoming++;
+      }
+    });
+
+    // 2. Use the maps to efficiently enhance the stats.
     const enhancedCallsPerDay = callsPerDay.map((day) => {
-      const dayCalls = calls.filter((call: any) => {
-        const callDate = new Date(call.Timestamp).toDateString();
-        const statDate = new Date(day.date).toDateString();
-        return callDate === statDate;
-      });
-
-      const outgoing = dayCalls.filter((call: any) => {
-        const { isOutgoing } = determineCallDirection(call, mainPhoneNumber);
-        return isOutgoing;
-      }).length;
-
-      const incoming = dayCalls.filter((call: any) => {
-        const { isOutgoing } = determineCallDirection(call, mainPhoneNumber);
-        return !isOutgoing;
-      }).length;
-
+      const statDate = new Date(day.date).toDateString();
+      const counts = callsByDate[statDate] || { outgoing: 0, incoming: 0 };
       return {
         ...day,
-        outgoing,
-        incoming,
+        ...counts,
       };
     });
 
-    // Add direction breakdown to calls per contact
     const enhancedCallsPerContact = callsPerContact.map((contactStat) => {
-      const contactCalls = calls.filter((call: any) => {
-        const { contactNumber } = determineCallDirection(call, mainPhoneNumber);
-        const contactName =
-          contactMap[contactNumber] || `Unknown (${contactNumber})`;
-        return contactName === contactStat.name;
-      });
-
-      const outgoing = contactCalls.filter((call: any) => {
-        const { isOutgoing } = determineCallDirection(call, mainPhoneNumber);
-        return isOutgoing;
-      }).length;
-
-      const incoming = contactCalls.filter((call: any) => {
-        const { isOutgoing } = determineCallDirection(call, mainPhoneNumber);
-        return !isOutgoing;
-      }).length;
-
+      const counts = callsByContact[contactStat.name] || {
+        outgoing: 0,
+        incoming: 0,
+      };
       return {
         ...contactStat,
-        outgoing,
-        incoming,
+        ...counts,
       };
     });
 
