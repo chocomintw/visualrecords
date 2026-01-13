@@ -193,6 +193,9 @@ export default function DataVisualization() {
       };
     });
 
+    // ⚡ Bolt: Redundant `createContactMap` call removed. The memoized `contactMap`
+    // from the outer scope is used instead, preventing re-computation on every render.
+    // Add direction breakdown to calls per contact
     const enhancedCallsPerContact = callsPerContact.map((contactStat) => {
       const counts = callsByContact[contactStat.name] || {
         outgoing: 0,
