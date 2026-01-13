@@ -5,6 +5,20 @@ import { parseFile, validateSMSData, validateCallData, validateContactData, pars
 import { sanitizeHTML } from "./sentinel"
 
 /**
+ * 🛡️ Sentinel: Helper function to sanitize an array of contacts.
+ *
+ * This function iterates over an array of contacts and applies HTML sanitization
+ * to the contact name and full name fields to prevent Stored XSS vulnerabilities.
+ */
+const sanitizeContacts = (contacts: Contact[]): Contact[] => {
+  return contacts.map((contact) => ({
+    ...contact,
+    "Contact Name": sanitizeHTML(contact["Contact Name"]),
+    "Full Name": contact["Full Name"] ? sanitizeHTML(contact["Full Name"]) : contact["Full Name"],
+  }))
+}
+
+/**
  * 🛡️ Sentinel: Helper function to sanitize all parts of the parsed data.
  *
  * This function iterates over the data and applies HTML sanitization to prevent
