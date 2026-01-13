@@ -2,6 +2,27 @@ import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 import * as XLSX from "xlsx"
 import type { SMS, CallLog, Contact, ParsedData, BankRecord } from "@/types"
+import { decodeHTML } from "@/lib/sentinel"
+
+
+// Helper to recursively decode HTML entities (handles double encoding like &amp;#39;)
+export function recursiveDecode(html: string): string {
+  if (!html) return ""
+  let decoded = decodeHTML(html)
+  let previous = html
+  let attempts = 0
+  
+  // Loop until no changes or max attempts reached
+  // We check if decoded != previous to ensure we made progress
+  // We check includes("&") as a heuristic to stop early if clean
+  while (decoded !== previous && attempts < 5) {
+      previous = decoded
+      decoded = decodeHTML(decoded)
+      attempts++
+  }
+  
+  return decoded
+}
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -162,130 +183,234 @@ export async function parseFile(file: File): Promise<any[]> {
         } else if (file.name.endsWith(".xlsx") || file.name.endsWith(".xls")) {
           // Parse Excel
           const workbook = XLSX.read(data, { type: "binary" })
-          const firstSheetName = workbook.SheetNames[0]
-          const worksheet = workbook.Sheets[firstSheetName]
-
-          // Convert to array of arrays first to handle phone export format
-          const jsonArray = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][]
-
+          
           let jsonData: any[] = []
+          let allRows: any[][] = []
 
-          // Check if this is a phone export file (has metadata at top)
-          const isPhoneExport = jsonArray.some(row =>
-            row && row[0] && String(row[0]).includes("Phone Number:")
-          )
+          // Collect rows from all sheets to handle multi-sheet HTML exports
+          workbook.SheetNames.forEach(name => {
+            const sheet = workbook.Sheets[name]
+            const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as any[][]
+            allRows.push(...rows)
+          })
 
-          if (isPhoneExport) {
-            console.log(`Detected phone export format in ${file.name}`)
-            // Find the header row for messages and calls
-            let messagesHeaderIndex = -1
-            let callsHeaderIndex = -1
-
-            for (let i = 0; i < jsonArray.length; i++) {
-              const row = jsonArray[i]
-              if (row && row[0] === "MESSAGES") {
-                messagesHeaderIndex = i + 1
-              } else if (row && row[0] === "CALLS") {
-                callsHeaderIndex = i + 1
-                break
-              }
+          // Try to find owner phone number from raw data (for HTML/fake XLS)
+          // or from first sheet (for real XLS)
+          let ownerPhoneNumber: string | null = null
+          if (typeof data === 'string') {
+            const match = data.match(/Phone Number:[\s"']*([0-9]+)/)
+            if (match) {
+               ownerPhoneNumber = match[1]
+               console.log(`Detected owner phone number from raw data: ${ownerPhoneNumber}`)
             }
+          }
 
-            // Parse messages
-            if (messagesHeaderIndex !== -1 && jsonArray[messagesHeaderIndex]) {
-              const messagesHeaders = jsonArray[messagesHeaderIndex].map(h => String(h || "").trim())
-              for (let i = messagesHeaderIndex + 1; i < (callsHeaderIndex !== -1 ? callsHeaderIndex - 1 : jsonArray.length); i++) {
-                const row = jsonArray[i]
-                if (row && row.some(cell => cell !== null && cell !== undefined && cell !== "")) {
-                  const obj: any = {}
-                  messagesHeaders.forEach((header, index) => {
-                    if (header && row[index] !== undefined) {
-                      obj[header] = String(row[index] || "")
-                    }
-                  })
-                  if (Object.keys(obj).length > 0) {
-                    obj._type = "SMS" // Mark as SMS
+          // Also check rows for Phone Number metadata if not found
+          if (!ownerPhoneNumber) {
+             const phoneRow = allRows.find(row => row && row[0] && String(row[0]).includes("Phone Number:"))
+             if (phoneRow) {
+                 ownerPhoneNumber = String(phoneRow[0]).replace("Phone Number:", "").trim().replace(/['"]/g, "")
+                 console.log(`Detected owner from row: ${ownerPhoneNumber}`)
+             }
+          }
+
+          // Find the header row for messages and calls
+          let messagesHeaderIndex = -1
+          let callsHeaderIndex = -1
+
+          const isSMSHeader = (row: any[]) => {
+             const str = row.map(c => String(c).trim()).join(" ")
+             return str.includes("Sender Number") && (str.includes("Message") || str.includes("Message Body"))
+          }
+
+          const isCallHeader = (row: any[]) => {
+             const str = row.map(c => String(c).trim()).join(" ")
+             return str.includes("Sender Number") && (str.includes("Call Info") || str.includes("Info"))
+          }
+
+          for (let i = 0; i < allRows.length; i++) {
+            const row = allRows[i]
+            const firstCell = row && row[0] ? String(row[0]).trim() : ""
+
+            // Detect by Section Title
+            if (firstCell === "MESSAGES" || firstCell.includes("=== MESSAGES ===")) {
+              // Check if next row is header
+              if (i + 1 < allRows.length && isSMSHeader(allRows[i+1])) {
+                 messagesHeaderIndex = i + 1
+              }
+            } else if (firstCell === "CALLS" || firstCell.includes("=== CALLS ===")) {
+               if (i + 1 < allRows.length && isCallHeader(allRows[i+1])) {
+                 callsHeaderIndex = i + 1
+               }
+            } 
+            
+            // Detect by Column Signature (if not already found via title)
+            if (messagesHeaderIndex === -1 && isSMSHeader(row)) {
+                messagesHeaderIndex = i
+            }
+            if (callsHeaderIndex === -1 && isCallHeader(row)) {
+                callsHeaderIndex = i
+            }
+          }
+
+          console.log(`Found headers: Messages at ${messagesHeaderIndex}, Calls at ${callsHeaderIndex}`)
+
+          // Helper to determine type
+          const determineType = (sender: string, receiver: string) => {
+             if (!ownerPhoneNumber) return "Sender" // Default
+             
+             if (sender === ownerPhoneNumber) return "Sender"
+             if (receiver === ownerPhoneNumber) return "Receiver"
+
+             // Partial match
+             const cleanOwner = ownerPhoneNumber.replace(/\D/g, "")
+             const cleanSender = sender.replace(/\D/g, "")
+             const cleanReceiver = receiver.replace(/\D/g, "")
+             
+             if (cleanSender === cleanOwner) return "Sender"
+             if (cleanSender.length > 5 && cleanOwner.endsWith(cleanSender)) return "Sender"
+             if (cleanOwner.length > 5 && cleanSender.endsWith(cleanOwner)) return "Sender"
+
+             if (cleanReceiver === cleanOwner) return "Receiver"
+             
+             return "Sender" // Fallback
+          }
+
+
+
+
+
+
+// ... existing code ...
+
+
+// ... existing code ...
+
+          // Parse messages
+          if (messagesHeaderIndex !== -1 && allRows[messagesHeaderIndex]) {
+            const messagesHeaders = allRows[messagesHeaderIndex].map(h => String(h || "").trim())
+            
+            // Determine end: next header or end of file
+            // But since we flattened, Calls might be after Messages.
+            // Iterate until we hit the row that is callsHeaderIndex (if it exists and > messageIndex)
+            const stopIndex = (callsHeaderIndex > messagesHeaderIndex) ? callsHeaderIndex : allRows.length
+
+            for (let i = messagesHeaderIndex + 1; i < stopIndex; i++) {
+              const row = allRows[i]
+              // Stop if we hit a new section title that we missed or just empty space? 
+              // Actually safe to just strictly parse logic.
+              if (row && row.some(cell => cell !== null && cell !== undefined && cell !== "")) {
+                // Double check it's not the calls header (if callsHeaderIndex was not found or something)
+                if (isCallHeader(row)) continue;
+
+                const obj: any = {}
+                messagesHeaders.forEach((header, index) => {
+                  if (header && row[index] !== undefined) {
+                    obj[header] = String(row[index] || "")
+                  }
+                })
+                
+                // Add valid SMS
+                if (obj["Sender Number"] && (obj["Target Number"] || obj["Receiver Number"]) && (obj["Message"] || obj["Message Body"])) {
+                    obj._type = "SMS"
+                    obj["Receiver Number"] = obj["Target Number"] || obj["Receiver Number"] // Normalize
+                    obj["Message Body"] = recursiveDecode(obj["Message"] || obj["Message Body"])
+                    obj["Type"] = determineType(obj["Sender Number"], obj["Receiver Number"])
                     jsonData.push(obj)
-                  }
                 }
               }
             }
+          }
 
-            // Parse calls
-            if (callsHeaderIndex !== -1 && jsonArray[callsHeaderIndex]) {
-              const callsHeaders = jsonArray[callsHeaderIndex].map(h => String(h || "").trim())
-              for (let i = callsHeaderIndex + 1; i < jsonArray.length; i++) {
-                const row = jsonArray[i]
-                if (row && row.some(cell => cell !== null && cell !== undefined && cell !== "")) {
-                  const obj: any = {}
-                  callsHeaders.forEach((header, index) => {
-                    if (header && row[index] !== undefined) {
-                      obj[header] = String(row[index] || "")
-                    }
+          // Parse calls
+          if (callsHeaderIndex !== -1 && allRows[callsHeaderIndex]) {
+            const callsHeaders = allRows[callsHeaderIndex].map(h => String(h || "").trim())
+            
+            for (let i = callsHeaderIndex + 1; i < allRows.length; i++) {
+              const row = allRows[i]
+              if (row && row.some(cell => cell !== null && cell !== undefined && cell !== "")) {
+                 if (isSMSHeader(row)) continue; // Safety check
+
+                 const obj: any = {}
+                 callsHeaders.forEach((header, index) => {
+                   if (header && row[index] !== undefined) {
+                     obj[header] = String(row[index] || "")
+                   }
+                 })
+
+                 // Add valid Call
+                 if (obj["Sender Number"] && (obj["Target Number"] || obj["Receiver Number"]) && (obj["Call Info"] || obj["Info"])) {
+                     obj._type = "Call"
+                     obj["Receiver Number"] = obj["Target Number"] || obj["Receiver Number"] // Normalize
+                     obj["Call Info"] = recursiveDecode(obj["Call Info"] || obj["Info"])
+                     obj["Type"] = determineType(obj["Sender Number"], obj["Receiver Number"])
+                     jsonData.push(obj)
+                 }
+              }
+            }
+          }
+
+
+          // If no specific Phone Export sections found, try standard parsing
+          if (messagesHeaderIndex === -1 && callsHeaderIndex === -1) {
+             console.log("No Phone Export sections found, trying standard parsing")
+             
+             // Use first sheet for standard parsing usually
+             const firstSheetName = workbook.SheetNames[0] || ""
+             const worksheet = firstSheetName ? workbook.Sheets[firstSheetName] : null
+             
+             if (worksheet) {
+               const jsonArray = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][]
+               let headerIndex = -1
+               const headerPatterns = [
+                  /Sender Number.*Target Number.*Message.*Timestamp/i,
+                  /Sender Number.*Receiver Number.*Message.*Timestamp/i,
+                  /Sender Number.*Target Number.*Call Info.*Timestamp/i,
+                  /Sender Number.*Receiver Number.*Call Info.*Timestamp/i,
+                  /Sender Number.*Receiver Number.*Type.*Timestamp/i
+               ]
+
+               for (let i = 0; i < Math.min(20, jsonArray.length); i++) {
+                 const rowStr = (jsonArray[i] || []).join(" ")
+                 if (headerPatterns.some(pattern => pattern.test(rowStr))) {
+                    headerIndex = i
+                    break
+                 }
+               }
+
+               if (headerIndex !== -1) {
+                  console.log(`Found Excel header at row ${headerIndex}`)
+                  // Re-parse with header
+                  const standardData = XLSX.utils.sheet_to_json(worksheet, { range: headerIndex }) as any[]
+                  
+                  // Convert dates and add to jsonData
+                  standardData.forEach(row => {
+                      if (row.Timestamp && typeof row.Timestamp === 'number') {
+                         try {
+                              const date = XLSX.SSF.parse_date_code(row.Timestamp)
+                              if (date) {
+                                  const month = date.m
+                                  const day = date.d
+                                  const year = date.y
+                                  const hours = date.H
+                                  const minutes = String(date.M).padStart(2, '0')
+                                  row.Timestamp = `${month}/${day}/${year} ${hours}:${minutes}`
+                              }
+                         } catch (e) {
+                              console.warn(`Failed to convert timestamp: ${row.Timestamp}`, e)
+                         }
+                      }
+                      jsonData.push(row)
                   })
-                  if (Object.keys(obj).length > 0) {
-                    obj._type = "Call" // Mark as Call
-                    jsonData.push(obj)
-                  }
-                }
-              }
-            }
-          } else {
-            // Standard Excel format
-            // Try to find the header row dynamically
-            let headerIndex = -1
-            const headerPatterns = [
-              /Sender Number.*Target Number.*Message.*Timestamp/i,
-              /Sender Number.*Receiver Number.*Message.*Timestamp/i,
-              /Sender Number.*Target Number.*Call Info.*Timestamp/i,
-              /Sender Number.*Receiver Number.*Call Info.*Timestamp/i,
-              /Sender Number.*Receiver Number.*Type.*Timestamp/i
-            ]
-
-            for (let i = 0; i < Math.min(20, jsonArray.length); i++) {
-              const rowStr = (jsonArray[i] || []).join(" ")
-              if (headerPatterns.some(pattern => pattern.test(rowStr))) {
-                headerIndex = i
-                break
-              }
-            }
-
-            if (headerIndex !== -1) {
-              console.log(`Found Excel header at row ${headerIndex}`)
-              jsonData = XLSX.utils.sheet_to_json(worksheet, { range: headerIndex })
-
-              // Convert Excel serial date numbers to readable dates
-              jsonData = jsonData.map(row => {
-                if (row.Timestamp && typeof row.Timestamp === 'number') {
-                  try {
-                    // Use XLSX's built-in date conversion
-                    const date = XLSX.SSF.parse_date_code(row.Timestamp)
-                    if (date) {
-                      // Format as "M/D/YYYY H:MM" to match CSV format
-                      const month = date.m
-                      const day = date.d
-                      const year = date.y
-                      const hours = date.H
-                      const minutes = String(date.M).padStart(2, '0')
-                      row.Timestamp = `${month}/${day}/${year} ${hours}:${minutes}`
-                    }
-                  } catch (e) {
-                    console.warn(`Failed to convert timestamp: ${row.Timestamp}`, e)
-                  }
-                }
-                return row
-              })
-            } else {
-              console.log("No specific header pattern found in Excel file, using default parsing")
-              jsonData = XLSX.utils.sheet_to_json(worksheet)
-            }
+               } else {
+                   // Clean fallback
+                   const standardData = XLSX.utils.sheet_to_json(worksheet) as any[]
+                   jsonData.push(...standardData)
+               }
+             }
           }
 
           console.log(`Parsed ${jsonData.length} rows from Excel file ${file.name}`)
-          if (jsonData.length > 0) {
-            console.log(`Excel headers for ${file.name}:`, Object.keys(jsonData[0] as any))
-            console.log(`First row sample from ${file.name}:`, jsonData[0])
-          }
           resolve(jsonData)
         } else {
           reject(new Error("Unsupported file format"))
@@ -434,10 +559,10 @@ function parsePhoneExportCSV(lines: string[]): any[] {
         }
 
         if (currentSection === "SMS") {
-          obj["Message Body"] = content
+          obj["Message Body"] = recursiveDecode(content)
           obj._type = "SMS"
         } else if (currentSection === "Call") {
-          obj["Call Info"] = content
+          obj["Call Info"] = recursiveDecode(content)
           obj._type = "Call"
         }
 
@@ -515,7 +640,7 @@ export function validateSMSData(data: any[]): SMS[] {
         "SMS #": smsId,
         "Sender Number": sender,
         "Receiver Number": receiver,
-        "Message Body": message,
+        "Message Body": recursiveDecode(message),
         "Type": messageType,
         "Timestamp": timestamp
       })
@@ -587,7 +712,7 @@ export function validateCallData(data: any[]): CallLog[] {
         "Call #": callId,
         "Sender Number": sender,
         "Receiver Number": receiver,
-        "Call Info": callInfo,
+        "Call Info": recursiveDecode(callInfo),
         "Type": callType,
         "Timestamp": timestamp
       })

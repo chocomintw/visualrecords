@@ -78,11 +78,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   setContacts: (contacts) => {
     set((state) => {
       // 🛡️ Sentinel: Sanitize contacts before updating state to prevent XSS.
-      const sanitizedContacts = contacts.map((contact) => ({
-        ...contact,
-        "Contact Name": sanitizeHTML(contact["Contact Name"]),
-        "Full Name": contact["Full Name"] ? sanitizeHTML(contact["Full Name"]) : undefined,
-      }))
+      // REMOVED: React automatically handles XSS protection.
+      // const sanitizedContacts = contacts.map((contact) => ({ ... }))
+      const sanitizedContacts = contacts
       const newData = { ...state.parsedData, contacts: sanitizedContacts }
       return {
         parsedData: newData,
@@ -220,7 +218,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
 
       // 🛡️ Sentinel: Sanitize all data before storing to prevent XSS
-      const sanitizedData = sanitizeParsedData(newData)
+      // REMOVED: React automatically handles XSS protection for text content. 
+      // Manual sanitization results in double-escaping (e.g. ' -> &#39;) which is displayed to the user.
+      const sanitizedData = newData 
 
       // Process stats immediately
       const bankStats = sanitizedData.bank.length > 0 ? processBankData(sanitizedData.bank) : null
@@ -245,7 +245,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ isLoading: true, error: "" })
 
       // 🛡️ Sentinel: Sanitize all data loaded from a session to prevent XSS
-      const sanitizedData = sanitizeParsedData(data)
+      // REMOVED: React automatically handles XSS protection.
+      const sanitizedData = data
 
       // Process stats immediately
       const bankStats = sanitizedData.bank.length > 0 ? processBankData(sanitizedData.bank) : null
