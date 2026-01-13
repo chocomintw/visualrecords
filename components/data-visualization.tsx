@@ -137,7 +137,10 @@ export default function DataVisualization() {
     ? callConversations.find((c) => c.contactName === selectedCallContact)
     : callConversations[0];
 
-  // Enhanced stats with direction information
+  // ⚡ Bolt: Optimize enhancedStats calculation by pre-computing call lookups.
+  // This refactors the original O(N*M) nested loops into a more efficient
+  // O(N+M) single-pass approach, significantly improving performance for
+  // large datasets by avoiding redundant filtering within loops.
   const enhancedStats = useMemo(() => {
     if (!communicationStats) return null;
 
