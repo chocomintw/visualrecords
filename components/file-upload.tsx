@@ -158,7 +158,7 @@ export default function FileUpload({
                 <div className="space-y-3">
                   <FileDropZone
                     onFilesDrop={(files) => handleFilesAdded(type, files)}
-                    accept=".csv,.xlsx"
+                    accept=".csv,.xlsx,.xls"
                     disabled={isLoading}
                     icon={getFileIcon(type)}
                     title={`Upload ${getFileTypeLabel(type)}`}

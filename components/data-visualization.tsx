@@ -51,10 +51,6 @@ export default function DataVisualization() {
     null,
   );
 
-  // ⚡ Bolt: Memoize the contact map to avoid re-computing it on every render.
-  // This is a significant optimization as it prevents an O(n*m) complexity
-  // issue in the enhancedStats calculation below where `createContactMap` was
-  // being called inside a loop.
   const contactMap = useMemo(() => createContactMap(contacts), [contacts]);
 
   if (!communicationStats) {
@@ -166,8 +162,6 @@ export default function DataVisualization() {
       };
     });
 
-    // ⚡ Bolt: Hoist contactMap out of the loop to prevent re-computation on every iteration.
-    // This significantly improves performance when there are many calls.
     const contactMap = createContactMap(contacts);
 
     // Add direction breakdown to calls per contact
