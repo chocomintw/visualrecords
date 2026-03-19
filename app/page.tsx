@@ -11,7 +11,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState("communication");
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8 max-w-[1600px]">
+      <div className="container mx-auto px-4 py-8 max-w-400">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-2xl font-bold tracking-tight">visualrecords</h1>
         </div>
