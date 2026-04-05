@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Tabs, TabsList, TabsContent, TabsTrigger } from "@/components/ui/tabs";
 import { MessageSquare, Users, Wallet } from "lucide-react";
+import Link from "next/link";
 import CommunicationDashboard from "@/components/communication-dashboard";
 import ContactEditor from "@/components/contact-editor";
 import { BankAnalyzer } from "@/components/bank-analyzer";
@@ -14,6 +15,12 @@ export default function Home() {
       <div className="container mx-auto px-4 py-8 max-w-400">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-2xl font-bold tracking-tight">visualrecords</h1>
+          <Link 
+            href="/converter" 
+            className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
+          >
+            iFruit Converter
+          </Link>
         </div>
 
         <Tabs
