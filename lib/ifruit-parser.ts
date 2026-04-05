@@ -53,7 +53,7 @@ export function parseIFruitFile(text: string): IFruitExport {
       // Format: [01/APR/2026 - 23:17] #26743273 -> #03776575: come inside the trap
       const match = line.match(/^\[(.*?)\]\s*#(\d+)\s*->\s*#(\d+):\s*(.*)$/);
       if (match) {
-        const timestamp = match[1];
+        const timestamp = match[1].replace(" - ", " ");
         const sender = match[2];
         const receiver = match[3];
         const body = match[4];
@@ -85,7 +85,7 @@ export function parseIFruitFile(text: string): IFruitExport {
            "Receiver Number": outgoingMatch[2],
            "Call Info": "Outgoing call",
            Type: "Sender",
-           Timestamp: outgoingMatch[1]
+           Timestamp: outgoingMatch[1].replace(" - ", " ")
          });
       } else if (receivedMatch) {
          calls.push({
@@ -94,7 +94,7 @@ export function parseIFruitFile(text: string): IFruitExport {
            "Receiver Number": ownerNumber,
            "Call Info": "Received call",
            Type: "Receiver",
-           Timestamp: receivedMatch[1]
+           Timestamp: receivedMatch[1].replace(" - ", " ")
          });
       } else {
          // Some numbers might not be just digits. We can adjust the regex above if needed -> [\d_]+
