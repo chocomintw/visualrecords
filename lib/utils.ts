@@ -777,11 +777,15 @@ export function validateSMSData(data: any[]): SMS[] {
       message !== "Message" &&
       timestamp !== "Timestamp"
     ) {
-      // Determine type - use existing Type if available, otherwise default to "Sender"
-      let messageType: "Sender" | "Receiver" = item.Type || "Sender";
+      // Determine type - use existing Type or Direction if available
+      let rawType = String(item.Type || item.Direction || "").toLowerCase();
+      let messageType: "Sender" | "Receiver" = "Sender";
 
-      // If Type is not set, try to determine from context
-      if (!item.Type) {
+      if (rawType === "receiver" || rawType === "incoming") {
+        messageType = "Receiver";
+      } else if (rawType === "sender" || rawType === "outgoing") {
+        messageType = "Sender";
+      } else {
         messageType = "Sender"; // Default fallback
       }
 
@@ -883,11 +887,15 @@ export function validateCallData(data: any[]): CallLog[] {
       receiver !== "Target Number" &&
       timestamp !== "Timestamp"
     ) {
-      // Determine type - use existing Type if available, otherwise default to "Sender"
-      let callType: "Sender" | "Receiver" = item.Type || "Sender";
+      // Determine type - use existing Type or Direction if available
+      let rawType = String(item.Type || item.Direction || "").toLowerCase();
+      let callType: "Sender" | "Receiver" = "Sender";
 
-      // If Type is not set, try to determine from context
-      if (!item.Type) {
+      if (rawType === "receiver" || rawType === "incoming") {
+        callType = "Receiver";
+      } else if (rawType === "sender" || rawType === "outgoing") {
+        callType = "Sender";
+      } else {
         callType = "Sender"; // Default fallback
       }
 
