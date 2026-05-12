@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { motion } from "framer-motion";
 import { useAppStore } from "@/lib/store";
 import {
   Card,
@@ -17,10 +18,27 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import FileUpload from "@/components/file-upload";
-import { Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
+import {
+  ChartConfig,
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
+} from "@/components/ui/chart";
+import { PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
 import { ArrowUpIcon, ArrowDownIcon } from "lucide-react";
 
-const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8"];
+const chartConfig = {
+  value: {
+    label: "Amount",
+    color: "var(--chart-1)",
+  },
+  balance: {
+    label: "Balance",
+    color: "var(--chart-1)",
+  },
+} satisfies ChartConfig;
 
 export function BankAnalyzer() {
   const bankStats = useAppStore((state) => state.bankStats);
@@ -89,7 +107,11 @@ export function BankAnalyzer() {
     bankStats;
 
   return (
-    <div className="space-y-6">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="space-y-6"
+    >
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold tracking-tight">
           Financial Overview
@@ -115,10 +137,10 @@ export function BankAnalyzer() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Income</CardTitle>
-            <ArrowUpIcon className="h-4 w-4 text-green-500" />
+            <ArrowUpIcon className="h-4 w-4 text-green-600 dark:text-green-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-500">
+            <div className="text-2xl font-bold text-green-600 dark:text-green-400">
               +${totalIncome.toFixed(2)}
             </div>
           </CardContent>
@@ -128,24 +150,24 @@ export function BankAnalyzer() {
             <CardTitle className="text-sm font-medium">
               Total Expenses
             </CardTitle>
-            <ArrowDownIcon className="h-4 w-4 text-red-500" />
+            <ArrowDownIcon className="h-4 w-4 text-red-600 dark:text-red-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-500">
+            <div className="text-2xl font-bold text-red-600 dark:text-red-400">
               -${totalExpense.toFixed(2)}
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Top Expenses</CardTitle>
-          <CardDescription>By transaction reason</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Top Expenses</CardTitle>
+            <CardDescription>By transaction reason</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ChartContainer id="bank-top-expenses" config={chartConfig} className="min-h-[300px] w-full">
               <PieChart>
                 <Pie
                   data={pieData}
@@ -156,23 +178,81 @@ export function BankAnalyzer() {
                     `${name} ${((percent || 0) * 100).toFixed(0)}%`
                   }
                   outerRadius={80}
-                  fill="#8884d8"
+                  fill="var(--chart-1)"
                   dataKey="value"
                   isAnimationActive={false}
                 >
-                  {pieData.map((entry, index) => (
+                  {pieData.map((_, index) => (
                     <Cell
                       key={`cell-${index}`}
-                      fill={COLORS[index % COLORS.length]}
+                      fill={`var(--chart-${(index % 8) + 1})`}
                     />
                   ))}
                 </Pie>
-                <Tooltip />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <ChartLegend content={<ChartLegendContent />} />
               </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
+            </ChartContainer>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Balance History</CardTitle>
+            <CardDescription>Account balance over time</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ChartContainer id="bank-balance-history" config={chartConfig} className="min-h-[300px] w-full">
+              <LineChart accessibilityLayer data={balanceHistory}>
+                <CartesianGrid vertical={false} />
+                <XAxis
+                  dataKey="date"
+                  tickLine={false}
+                  tickMargin={10}
+                  axisLine={false}
+                  tickFormatter={(value) => {
+                    const date = new Date(value);
+                    return date.toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                    });
+                  }}
+                />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={10}
+                  tickFormatter={(value) => `$${value}`}
+                />
+                <ChartTooltip
+                  cursor={false}
+                  content={
+                    <ChartTooltipContent
+                      labelFormatter={(value) => {
+                        const date = new Date(value);
+                        return date.toLocaleDateString("en-US", {
+                          weekday: "short",
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                        });
+                      }}
+                    />
+                  }
+                />
+                <Line
+                  type="monotone"
+                  dataKey="balance"
+                  stroke="var(--color-balance)"
+                  strokeWidth={2}
+                  dot={false}
+                  animationDuration={500}
+                />
+              </LineChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
+      </div>
 
       <Card>
         <CardHeader>
@@ -182,54 +262,48 @@ export function BankAnalyzer() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Receiver Name</TableHead>
-                <TableHead>Reason</TableHead>
-                <TableHead>Routing</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-                <TableHead className="text-right">Balance</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {paginatedData.map((record, index) => {
-                // Try to find contact name by matching full name in 'from' field
-                const receiverName =
-                  contactMap[record.from.toLowerCase()] || record.from;
-
-                return (
-                  <TableRow key={`${record.id}-${index}`}>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Reason</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="text-right">Balance</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paginatedData.map((record, index) => (
+                  <TableRow key={index}>
                     <TableCell className="font-medium">{record.date}</TableCell>
-                    <TableCell>{receiverName}</TableCell>
-                    <TableCell>{record.reason}</TableCell>
-                    <TableCell className="font-mono text-xs">
-                      {record.routing}
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span className="font-medium">
+                          {record.reason || "No Reason"}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {contactMap[record.reason?.toLowerCase() || ""] || ""}
+                        </span>
+                      </div>
                     </TableCell>
                     <TableCell
-                      className={`text-right ${record.amount > 0 ? "text-green-500" : "text-red-500"}`}
+                      className={`text-right ${
+                        record.amount < 0 ? "text-red-600" : "text-green-600"
+                      }`}
                     >
-                      {record.amount > 0 ? "+" : ""}
-                      {record.amount.toFixed(2)}
+                      {record.amount < 0 ? "-" : "+"}$
+                      {Math.abs(record.amount).toFixed(2)}
                     </TableCell>
-                    <TableCell className="text-right font-bold">
-                      {record.balance.toFixed(2)}
+                    <TableCell className="text-right font-mono">
+                      ${record.balance.toFixed(2)}
                     </TableCell>
                   </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-
-          {/* Pagination Controls */}
-          <div className="flex items-center justify-between space-x-2 py-4">
-            <div className="text-sm text-muted-foreground">
-              Showing {startIndex + 1} to{" "}
-              {Math.min(startIndex + itemsPerPage, sortedData.length)} of{" "}
-              {sortedData.length} entries
-            </div>
-            <div className="space-x-2">
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-end space-x-2 py-4">
               <Button
                 variant="outline"
                 size="sm"
@@ -238,6 +312,9 @@ export function BankAnalyzer() {
               >
                 Previous
               </Button>
+              <div className="text-sm font-medium">
+                Page {currentPage} of {totalPages}
+              </div>
               <Button
                 variant="outline"
                 size="sm"
@@ -247,9 +324,9 @@ export function BankAnalyzer() {
                 Next
               </Button>
             </div>
-          </div>
+          )}
         </CardContent>
       </Card>
-    </div>
+    </motion.div>
   );
 }

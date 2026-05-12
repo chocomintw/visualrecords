@@ -56,7 +56,7 @@ export function SessionManager() {
   };
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-col gap-1.5">
       <input
         type="file"
         ref={fileInputRef}
@@ -66,29 +66,29 @@ export function SessionManager() {
       />
 
       <Button
-        variant="outline"
+        variant="ghost"
         size="sm"
         onClick={handleImportClick}
         disabled={isLoading || isImporting}
-        className="gap-2"
+        className="justify-start gap-2.5 h-8 px-3 text-[13px] font-medium text-muted-foreground hover:text-foreground"
       >
         {isImporting ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
         ) : (
-          <Upload className="h-4 w-4" />
+          <Upload className="h-3.5 w-3.5" />
         )}
         Import Session
       </Button>
 
       {hasData && (
         <Button
-          variant="outline"
+          variant="ghost"
           size="sm"
           onClick={handleExport}
           disabled={isLoading || isImporting}
-          className="gap-2"
+          className="justify-start gap-2.5 h-8 px-3 text-[13px] font-medium text-muted-foreground hover:text-foreground"
         >
-          <Download className="h-4 w-4" />
+          <Download className="h-3.5 w-3.5" />
           Export Session
         </Button>
       )}

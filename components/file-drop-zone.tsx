@@ -58,9 +58,6 @@ export function FileDropZone({
 
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const files = Array.from(e.dataTransfer.files);
-      // Filter by accept if needed, but usually handled by input.
-      // For now passing all dropped files that match basic extension check if needed,
-      // but simple pass-through is often enough for UX, validation can happen later.
       onFilesDrop(files);
     }
   };
@@ -74,7 +71,6 @@ export function FileDropZone({
     if (e.target.files && e.target.files.length > 0) {
       const files = Array.from(e.target.files);
       onFilesDrop(files);
-      // Reset value so same file can be selected again if needed
       e.target.value = "";
     }
   };
@@ -87,10 +83,11 @@ export function FileDropZone({
       onDragOver={handleDragOver}
       onDrop={handleDrop}
       className={cn(
-        "relative group cursor-pointer flex flex-col items-center justify-center w-full rounded-xl border-2 border-dashed transition-all duration-200 ease-in-out px-6 py-10 text-center",
+        "relative group cursor-pointer flex flex-col items-center justify-center w-full rounded-2xl border-2 border-dashed transition-all duration-300 ease-in-out px-6 py-8 text-center",
+        "bg-muted/5 backdrop-blur-sm",
         isDragActive
-          ? "border-primary bg-primary/5 scale-[1.01] shadow-lg"
-          : "border-border/50 hover:border-primary/50 hover:bg-muted/20",
+          ? "border-primary bg-primary/10 scale-[1.02] shadow-[0_0_20px_rgba(var(--primary),0.15)]"
+          : "border-border/60 hover:border-primary/40 hover:bg-muted/20 hover:shadow-sm",
         disabled && "opacity-60 cursor-not-allowed pointer-events-none",
         className,
       )}
@@ -107,19 +104,27 @@ export function FileDropZone({
 
       <div
         className={cn(
-          "p-4 rounded-full bg-muted mb-4 transition-colors duration-200",
+          "p-3 rounded-xl bg-background border border-border/50 mb-3 shadow-sm transition-all duration-300",
           isDragActive
-            ? "bg-primary/10 text-primary"
-            : "text-muted-foreground group-hover:text-primary group-hover:bg-primary/10",
+            ? "bg-primary text-primary-foreground scale-110 rotate-3"
+            : "text-muted-foreground group-hover:text-primary group-hover:border-primary/30 group-hover:scale-105",
         )}
       >
-        {icon || <Upload className="h-8 w-8" />}
+        {icon || <Upload className="h-6 w-6" />}
       </div>
 
-      <h3 className="text-lg font-semibold tracking-tight mb-1">{title}</h3>
-      <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+      <h3 className="text-sm font-semibold tracking-tight mb-1 transition-colors group-hover:text-primary">
+        {title}
+      </h3>
+      <p className="text-[11px] text-muted-foreground max-w-[180px] mx-auto leading-tight">
         {description}
       </p>
+
+      {/* Decorative corners */}
+      <div className="absolute top-2 left-2 w-2 h-2 border-t-2 border-l-2 border-primary/20 rounded-tl-sm transition-all group-hover:border-primary/40" />
+      <div className="absolute top-2 right-2 w-2 h-2 border-t-2 border-r-2 border-primary/20 rounded-tr-sm transition-all group-hover:border-primary/40" />
+      <div className="absolute bottom-2 left-2 w-2 h-2 border-b-2 border-l-2 border-primary/20 rounded-bl-sm transition-all group-hover:border-primary/40" />
+      <div className="absolute bottom-2 right-2 w-2 h-2 border-b-2 border-r-2 border-primary/20 rounded-br-sm transition-all group-hover:border-primary/40" />
     </div>
   );
 }

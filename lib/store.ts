@@ -45,6 +45,7 @@ interface AppState {
   parsedData: ParsedData
   bankStats: BankStats | null
   communicationStats: CommunicationStats | null
+  uploadedFiles: UploadedFiles
   isLoading: boolean
   error: string
 
@@ -63,6 +64,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   parsedData: { sms: [], calls: [], contacts: [], bank: [] },
   bankStats: null,
   communicationStats: null,
+  uploadedFiles: {},
   isLoading: false,
   error: "",
 
@@ -97,6 +99,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   resetState: () =>
     set({
       parsedData: { sms: [], calls: [], contacts: [], bank: [] },
+      uploadedFiles: {},
       bankStats: null,
       communicationStats: null,
       error: "",
@@ -109,7 +112,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       return
     }
 
-    set({ isLoading: true, error: "" })
+    set({ isLoading: true, error: "", uploadedFiles: files })
 
     try {
       const currentData = get().parsedData
@@ -222,15 +225,24 @@ export const useAppStore = create<AppState>((set, get) => ({
       // Manual sanitization results in double-escaping (e.g. ' -> &#39;) which is displayed to the user.
       const sanitizedData = newData 
 
-      // Process stats immediately
-      const bankStats = sanitizedData.bank.length > 0 ? processBankData(sanitizedData.bank) : null
-      const communicationStats = processCommunicationData(sanitizedData)
-
+      // Set basic data first to unblock UI
       set({
         parsedData: sanitizedData,
-        bankStats,
-        communicationStats
+        bankStats: null,
+        communicationStats: null,
+        isLoading: false
       })
+
+      // Defer heavy processing to next tick to allow UI to render loading states
+      setTimeout(() => {
+        const bankStats = sanitizedData.bank.length > 0 ? processBankData(sanitizedData.bank) : null
+        const communicationStats = processCommunicationData(sanitizedData)
+        
+        set({
+          bankStats,
+          communicationStats
+        })
+      }, 50)
     } catch (err) {
       const errorMsg = `Error processing files: ${err instanceof Error ? err.message : "Unknown error"}`
       console.error("Error processing files:", err)
