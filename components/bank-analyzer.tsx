@@ -26,7 +26,7 @@ import {
   ChartLegend,
   ChartLegendContent,
 } from "@/components/ui/chart";
-import { PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
+import { PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid } from "recharts";
 import { ArrowUpIcon, ArrowDownIcon } from "lucide-react";
 
 const chartConfig = {
@@ -103,7 +103,7 @@ export function BankAnalyzer() {
     );
   }
 
-  const { totalIncome, totalExpense, currentBalance, pieData, balanceHistory } =
+  const { totalIncome, totalExpense, pieData } =
     bankStats;
 
   return (
@@ -121,19 +121,7 @@ export function BankAnalyzer() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Current Balance
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              ${currentBalance.toFixed(2)}
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Income</CardTitle>
@@ -160,7 +148,7 @@ export function BankAnalyzer() {
         </Card>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6">
         <Card>
           <CardHeader>
             <CardTitle>Top Expenses</CardTitle>
@@ -195,63 +183,6 @@ export function BankAnalyzer() {
             </ChartContainer>
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Balance History</CardTitle>
-            <CardDescription>Account balance over time</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer id="bank-balance-history" config={chartConfig} className="min-h-[300px] w-full">
-              <LineChart accessibilityLayer data={balanceHistory}>
-                <CartesianGrid vertical={false} />
-                <XAxis
-                  dataKey="date"
-                  tickLine={false}
-                  tickMargin={10}
-                  axisLine={false}
-                  tickFormatter={(value) => {
-                    const date = new Date(value);
-                    return date.toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                    });
-                  }}
-                />
-                <YAxis
-                  tickLine={false}
-                  axisLine={false}
-                  tickMargin={10}
-                  tickFormatter={(value) => `$${value}`}
-                />
-                <ChartTooltip
-                  cursor={false}
-                  content={
-                    <ChartTooltipContent
-                      labelFormatter={(value) => {
-                        const date = new Date(value);
-                        return date.toLocaleDateString("en-US", {
-                          weekday: "short",
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                        });
-                      }}
-                    />
-                  }
-                />
-                <Line
-                  type="monotone"
-                  dataKey="balance"
-                  stroke="var(--color-balance)"
-                  strokeWidth={2}
-                  dot={false}
-                  animationDuration={500}
-                />
-              </LineChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
       </div>
 
       <Card>
@@ -269,7 +200,6 @@ export function BankAnalyzer() {
                   <TableHead>Date</TableHead>
                   <TableHead>Reason</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
-                  <TableHead className="text-right">Balance</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -278,12 +208,19 @@ export function BankAnalyzer() {
                     <TableCell className="font-medium">{record.date}</TableCell>
                     <TableCell>
                       <div className="flex flex-col">
-                        <span className="font-medium">
-                          {record.reason || "No Reason"}
+                        <span className="font-medium text-sm">
+                          {record.from || "Unknown"}
                         </span>
-                        <span className="text-xs text-muted-foreground">
-                          {contactMap[record.reason?.toLowerCase() || ""] || ""}
+                        <span className="text-xs text-muted-foreground line-clamp-1">
+                          {record.reason}
                         </span>
+                        {contactMap[record.from?.toLowerCase() || ""] && (
+                           <div className="mt-1">
+                             <span className="text-[10px] font-semibold bg-primary/10 text-primary px-1.5 py-0.5 rounded-full border border-primary/20">
+                               Identified: {contactMap[record.from?.toLowerCase() || ""]}
+                             </span>
+                           </div>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell
@@ -293,9 +230,6 @@ export function BankAnalyzer() {
                     >
                       {record.amount < 0 ? "-" : "+"}$
                       {Math.abs(record.amount).toFixed(2)}
-                    </TableCell>
-                    <TableCell className="text-right font-mono">
-                      ${record.balance.toFixed(2)}
                     </TableCell>
                   </TableRow>
                 ))}

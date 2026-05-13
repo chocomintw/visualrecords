@@ -188,6 +188,19 @@ export const useAppStore = create<AppState>((set, get) => ({
             const bankData = await parseBankData(file)
             allBankData.push(...bankData)
           }
+          // Sort bank data by date
+          allBankData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+
+          // Compute running balance if missing (all 0s)
+          const hasBalance = allBankData.some(r => r.balance !== 0)
+          if (!hasBalance && allBankData.length > 0) {
+            let balance = 0
+            allBankData.forEach(r => {
+              balance += r.amount
+              r.balance = balance
+            })
+          }
+
           newData.bank = allBankData
           console.log("Validated Bank data:", newData.bank.length)
         } else {

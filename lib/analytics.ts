@@ -8,7 +8,7 @@ export interface BankStats {
     currentBalance: number
     expensesByReason: Record<string, number>
     pieData: { name: string; value: number }[]
-    balanceHistory: { name: string; balance: number; amount: number }[]
+    balanceHistory: { date: string; balance: number; amount: number }[]
 }
 
 export function processBankData(bankData: BankRecord[]): BankStats {
@@ -54,7 +54,7 @@ export function processBankData(bankData: BankRecord[]): BankStats {
 
     const balanceHistory = bankData
         .map((r) => ({
-            name: r.date,
+            date: r.date,
             balance: r.balance,
             amount: r.amount,
         }))

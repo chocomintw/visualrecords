@@ -1020,10 +1020,11 @@ export async function parseBankData(file: File): Promise<any[]> {
           // Based on user input: ",From,Routing,Reason,Amount,Balance,Date,,,"
           let headerIndex = -1;
           for (let i = 0; i < Math.min(10, lines.length); i++) {
+            const line = lines[i];
             if (
-              lines[i].includes("From") &&
-              lines[i].includes("Amount") &&
-              lines[i].includes("Date")
+              (line.includes("From") || line.includes("Counterparty Name")) &&
+              line.includes("Amount") &&
+              line.includes("Date")
             ) {
               headerIndex = i;
               break;
@@ -1084,7 +1085,7 @@ export async function parseBankData(file: File): Promise<any[]> {
           for (let i = 0; i < Math.min(10, jsonArray.length); i++) {
             const row = jsonArray[i];
             if (
-              row.includes("From") &&
+              (row.includes("From") || row.includes("Counterparty Name")) &&
               row.includes("Amount") &&
               row.includes("Date")
             ) {
@@ -1113,13 +1114,23 @@ export async function parseBankData(file: File): Promise<any[]> {
             const balanceStr = String(item["Balance"] || "")
               .replace(/[$,]/g, "")
               .trim();
+            
+            const direction = String(item["Direction"] || "").toLowerCase();
+            let amount = parseFloat(amountStr) || 0;
+
+            // Bank format: Debit = Positive (Income), Credit = Negative (Expense)
+            if (direction === "credit") {
+              amount = -Math.abs(amount);
+            } else if (direction === "debit") {
+              amount = Math.abs(amount);
+            }
 
             return {
-              id: String(index),
-              from: String(item["From"] || ""),
-              routing: String(item["Routing"] || ""),
+              id: String(item["ID"] || index),
+              from: String(item["From"] || item["Counterparty Name"] || ""),
+              routing: String(item["Routing"] || item["Counterparty Routing"] || ""),
               reason: String(item["Reason"] || ""),
-              amount: parseFloat(amountStr) || 0,
+              amount: amount,
               balance: parseFloat(balanceStr) || 0,
               date: String(item["Date"] || ""),
               rawDate: String(item["Date"] || ""),
