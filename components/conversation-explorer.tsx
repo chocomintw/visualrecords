@@ -117,9 +117,10 @@ export default function ConversationExplorer() {
   
   // Quick Contact Edit State
   const { setContacts } = useAppStore();
-  const [isContactDialogOpen, setIsContactDialogOpen] = useState(false);
+   const [isContactDialogOpen, setIsContactDialogOpen] = useState(false);
   const [editingPhone, setEditingPhone] = useState("");
   const [editingName, setEditingName] = useState("");
+  const [editingFullName, setEditingFullName] = useState("");
 
   useEffect(() => {
     setIsMounted(true);
@@ -127,18 +128,21 @@ export default function ConversationExplorer() {
 
   // Create contact lookup map
   const contactMap = useMemo(() => {
-    const map: { [key: string]: string } = {};
+    const map: { [key: string]: { contactName: string, fullName: string } } = {};
     contacts.forEach((contact: any) => {
-      map[contact["Phone Number"]] = contact["Contact Name"];
+      map[contact["Phone Number"]] = {
+        contactName: contact["Contact Name"] || "",
+        fullName: contact["Full Name"] || ""
+      };
     });
     return map;
   }, [contacts]);
 
   // Helper to get display name for a phone number
   const getDisplayInfo = (phoneNumber: string) => {
-    const contactName = contactMap[phoneNumber];
-    if (contactName) {
-      return { name: contactName, isUnknown: false };
+    const contactInfo = contactMap[phoneNumber];
+    if (contactInfo?.contactName) {
+      return { name: contactInfo.contactName, isUnknown: false };
     }
     return { name: `Unknown (${phoneNumber})`, isUnknown: true };
   };
@@ -148,9 +152,10 @@ export default function ConversationExplorer() {
   };
 
   const openContactDialog = (phoneNumber: string) => {
-    const existingName = contactMap[phoneNumber] || "";
+    const existing = contactMap[phoneNumber];
     setEditingPhone(phoneNumber);
-    setEditingName(existingName);
+    setEditingName(existing?.contactName || "");
+    setEditingFullName(existing?.fullName || "");
     setIsContactDialogOpen(true);
   };
 
@@ -164,13 +169,13 @@ export default function ConversationExplorer() {
       newContacts[existingIndex] = {
         ...newContacts[existingIndex],
         "Contact Name": editingName.trim() || editingPhone,
-        "Full Name": editingName.trim() || editingPhone,
+        "Full Name": editingFullName.trim() || editingName.trim() || editingPhone,
       };
     } else {
       newContacts.push({
         "Phone Number": editingPhone,
         "Contact Name": editingName.trim() || editingPhone,
-        "Full Name": editingName.trim() || editingPhone,
+        "Full Name": editingFullName.trim() || editingName.trim() || editingPhone,
       });
     }
 
@@ -1053,13 +1058,22 @@ export default function ConversationExplorer() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="name" className="text-xs font-bold uppercase tracking-wider opacity-70">Display Name</Label>
+              <Label htmlFor="name" className="text-xs font-bold uppercase tracking-wider opacity-70">Display Name (Short)</Label>
               <Input
                 id="name"
-                placeholder="Enter contact name..."
+                placeholder="e.g. John S."
                 value={editingName}
                 onChange={(e) => setEditingName(e.target.value)}
                 autoFocus
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="fullName" className="text-xs font-bold uppercase tracking-wider opacity-70">Full Name</Label>
+              <Input
+                id="fullName"
+                placeholder="e.g. John Smith"
+                value={editingFullName}
+                onChange={(e) => setEditingFullName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && saveContact()}
               />
             </div>

@@ -24,7 +24,7 @@ import {
   ArrowLeftRight,
   Menu,
   X,
-  Sparkles,
+  Activity,
 } from "lucide-react";
 
 type View = "upload" | "charts" | "tables" | "conversations" | "contacts" | "bank";
@@ -34,8 +34,8 @@ const navItems: { id: View; label: string; icon: typeof Upload; section?: string
   { id: "charts", label: "Charts", icon: BarChart3, section: "Analysis", requiresComms: true },
   { id: "tables", label: "Data Tables", icon: Table, requiresComms: true },
   { id: "conversations", label: "Conversations", icon: MessageSquare, requiresComms: true },
+  { id: "bank", label: "Bank Analyzer", icon: Wallet, requiresBank: true },
   { id: "contacts", label: "Contacts", icon: Users, section: "Tools" },
-  { id: "bank", label: "Bank", icon: Wallet },
 ];
 
 export default function Home() {
@@ -70,7 +70,7 @@ export default function Home() {
         {/* Logo */}
         <div className="h-[60px] flex items-center gap-2.5 px-5 border-b border-sidebar-border shrink-0">
           <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-            <Sparkles className="h-4 w-4 text-primary-foreground" />
+            <Activity className="h-4 w-4 text-primary-foreground" />
           </div>
           <span className="text-base font-bold tracking-tight">visualrecords</span>
         </div>

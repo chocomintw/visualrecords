@@ -12,7 +12,7 @@ import {
   Info, 
   Wallet, 
   CheckCircle2, 
-  Sparkles,
+  Activity,
   ArrowRight
 } from "lucide-react";
 import { FileDropZone } from "@/components/file-drop-zone";
@@ -121,12 +121,12 @@ export default function FileUpload({
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div className="space-y-1.5">
           <div className="flex items-center gap-2 text-primary">
-            <Sparkles className="h-5 w-5" />
-            <span className="text-xs font-bold uppercase tracking-wider">Data Ingestion</span>
+            <Activity className="h-5 w-5" />
+            <span className="text-xs font-bold uppercase tracking-wider">Upload Data</span>
           </div>
-          <h2 className="text-3xl font-extrabold tracking-tight">Upload Your Records</h2>
+          <h2 className="text-3xl font-extrabold tracking-tight">Upload Records</h2>
           <p className="text-muted-foreground text-sm max-w-md">
-            Import your communication and financial logs to generate comprehensive visual insights.
+            Import your logs to begin your analysis.
           </p>
         </div>
 
@@ -215,7 +215,7 @@ export default function FileUpload({
         </div>
       </div>
 
-      {/* Footer Info & Action */}
+      {/* Footer Info */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pt-4 border-t border-border/50">
         <div className="flex items-start gap-3 text-muted-foreground max-w-lg">
           <div className="mt-1 h-5 w-5 rounded-full bg-muted flex items-center justify-center shrink-0">
@@ -226,28 +226,6 @@ export default function FileUpload({
             Supported formats: <span className="text-foreground font-medium">.CSV, .XLSX, .XLS</span>.
           </p>
         </div>
-
-        <Button 
-          size="lg" 
-          disabled={!hasCommsData || isLoading}
-          className={cn(
-            "h-12 px-8 rounded-xl font-bold transition-all duration-300",
-            hasCommsData ? "shadow-lg shadow-primary/20 scale-105" : "opacity-50"
-          )}
-          onClick={onSuccess}
-        >
-          {isLoading ? (
-            <div className="flex items-center gap-2">
-              <div className="h-4 w-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-              <span>Processing...</span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <span>Initialize Analytics</span>
-              <ArrowRight className="h-4 w-4" />
-            </div>
-          )}
-        </Button>
       </div>
     </div>
   );
